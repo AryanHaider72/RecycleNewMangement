@@ -1,29 +1,35 @@
-// components/GenericCheckbox.tsx
+// components/GenericRadio.tsx
 
-interface CheckboxProps {
+interface RadioProps {
   label: string;
+  name: string;
+  value: string;
   checked: boolean;
-  onChange: (checked: boolean) => void;
+  onChange: (value: string) => void;
   disabled?: boolean;
 }
 
-export default function GenericCheckbox({
+export default function GenericRadio({
   label,
+  name,
+  value,
   checked,
   onChange,
   disabled = false,
-}: CheckboxProps) {
+}: RadioProps) {
   return (
     <label
-      className={`flex items-center gap-2 cursor-pointer mt-2 ${
+      className={`flex items-center gap-1 cursor-pointer ${
         disabled ? "opacity-50 cursor-not-allowed" : ""
       }`}
     >
       <input
-        type="checkbox"
+        type="radio"
+        name={name}
+        value={value}
         checked={checked}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
+        onChange={() => onChange(value)}
         className="w-4 h-4 accent-neutral-900"
       />
 
