@@ -22,7 +22,7 @@ export default function InputFieldGeneric({
   return (
     <>
       <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-2 mt-2">
+        <label className="block text-sm font-medium text-neutral-700 ">
           {label}
           {required && <span className="text-red-600 text-lg ml-1">*</span>}
         </label>

@@ -9,15 +9,26 @@ import LogoutApi from "../api/Controller/Authentication/Logout";
 import {
   Banknote,
   Briefcase,
+  BriefcaseBusinessIcon,
+  BriefcaseConveyorBelt,
+  Building,
+  Car,
   ChevronDown,
   ChevronRight,
   Code2,
+  DollarSign,
+  Hammer,
   LayoutDashboard,
   List,
   LogOut,
   Menu,
+  Scale,
+  ShieldUser,
   Truck,
+  UserCircle,
   Users,
+  UsersRound,
+  Wallet,
   X,
 } from "lucide-react";
 
@@ -79,6 +90,100 @@ export default function AdminSidebar() {
           href: "/AdminSetting/Codes/OwnerInvestor",
           type: "link",
         },
+        {
+          id: "customer",
+          label: "Customer (گاہک)",
+          icon: UsersRound,
+          href: "/AdminSetting/Codes/Customer",
+          type: "link",
+        },
+        {
+          id: "supplier",
+          label: "Supplier (گاہک)",
+          icon: Briefcase,
+          href: "/AdminSetting/Codes/Supplier",
+          type: "link",
+        },
+        {
+          id: "labour",
+          label: "Labour (مزدور)",
+          icon: Hammer,
+          href: "/AdminSetting/Codes/LabourTitle",
+          type: "link",
+        },
+      ],
+    },
+    {
+      heading: "Module 1 — Recycling (ری سائیکلنگ)",
+      subHeading: [
+        {
+          id: "purchasetrip",
+          label: "PurchaseTrip (خریداری ٹرپ)",
+          icon: DollarSign,
+          href: "/AdminSetting/Module1/PurchaseTrip",
+          type: "link",
+        },
+        {
+          id: "LabourKg",
+          label: "Labour KG Work (مزدور کلو کام) ",
+          icon: Scale,
+          href: "/AdminSetting/Module1/Labour",
+          type: "link",
+        },
+        {
+          id: "generalExpense",
+          label: "General Expense (عام اخراجات)",
+          icon: Wallet,
+          href: "/AdminSetting/Module1/Expense",
+          type: "link",
+        },
+      ],
+    },
+    {
+      heading: "Ledgers (کھاتے)",
+      subHeading: [
+        {
+          id: "employee",
+          label: "Employee (ملازم)",
+          icon: BriefcaseConveyorBelt,
+          href: "/AdminSetting/Ledger/Employee",
+          type: "link",
+        },
+        {
+          id: "customer",
+          label: "Customer (گاہک)",
+          icon: UserCircle,
+          href: "/AdminSetting/Ledger/Customer",
+          type: "link",
+        },
+        {
+          id: "supplier",
+          label: "Supplier (سپلائر)",
+          icon: BriefcaseBusinessIcon,
+          href: "/AdminSetting/Ledger/Supplier",
+          type: "link",
+        },
+        {
+          id: "owner",
+          label: "Owner (مالکان)",
+          icon: ShieldUser,
+          href: "/AdminSetting/Ledger/Owner",
+          type: "link",
+        },
+        {
+          id: "vehicle",
+          label: "Vehicle (گاڑیاں)",
+          icon: Car,
+          href: "/AdminSetting/Ledger/Vehicle",
+          type: "link",
+        },
+        {
+          id: "bank",
+          label: "Bank (بینک)",
+          icon: Building,
+          href: "/AdminSetting/Ledger/Bank",
+          type: "link",
+        },
       ],
     },
   ];
@@ -136,7 +241,7 @@ export default function AdminSidebar() {
 
       {/* Sidebar - No main wrapper, just the aside */}
       <aside
-        className={`fixed left-0 top-0 z-40 flex h-full w-72 transform flex-col bg-gray-900 transition-transform duration-300 shadow-xl dark:bg-gray-800 lg:relative lg:translate-x-0 ${
+        className={`fixed left-0 top-0 z-40 flex h-full w-82 transform flex-col bg-gray-900 transition-transform duration-300 shadow-xl dark:bg-gray-800 lg:relative lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -164,7 +269,7 @@ export default function AdminSidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-4 py-6">
+        <nav className="flex-1 overflow-y-auto px-4 py-6 element-class">
           {navigation.map((item, index) => (
             <div key={index} className="mb-4">
               {/* Show Heading */}

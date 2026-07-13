@@ -15,7 +15,7 @@ export default function GenericCheckbox({
 }: CheckboxProps) {
   return (
     <label
-      className={`flex items-center gap-2 cursor-pointer mt-2 ${
+      className={`flex items-center gap-2 cursor-pointer ${
         disabled ? "opacity-50 cursor-not-allowed" : ""
       }`}
     >
