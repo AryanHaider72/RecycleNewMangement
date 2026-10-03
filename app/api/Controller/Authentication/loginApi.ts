@@ -11,7 +11,7 @@ export default async function LoginApi(data: loginRequest, token?: string) {
   }
 
   const response = await postRequest(
-    `/api/Authentication/Login`,
+    `/api/Authentication/login`,
     data,
     customHeader,
   );

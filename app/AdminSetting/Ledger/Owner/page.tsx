@@ -21,6 +21,8 @@ import AddOwnerLedgerApi from "@/app/api/Controller/Ledger/Owner/AddOwnerLedger"
 import ModifyOwnerLedgerApi from "@/app/api/Controller/Ledger/Owner/ModifyOwnerLedger";
 import OwnerLedgerGetList from "./OwnerLedgerGetList";
 import { OwnerLedegrList } from "@/app/api/Types/Ledger/OwnerLedger";
+import { BankList, responseBankListGet } from "@/app/api/Types/Codes/Bank/Bank";
+import BankGetApi from "@/app/api/Controller/Codes/Bank/GetBank";
 
 export default function OwnerLedgerManagement() {
   const [ShowForm, setShowForm] = useState(false);
@@ -37,8 +39,14 @@ export default function OwnerLedgerManagement() {
   const [messageType, setMessageType] = useState<"success" | "error">(
     "success",
   );
+  const [PaymentMethod, setPaymentMethod] = useState("Cash");
+  const [PaymentTypeID, setPaymentTypeID] = useState("");
+  const [PaymentType, setPaymentType] = useState("");
   const [Delete, setDelete] = useState(false);
   const [moduleList, setModuleList] = useState<OwnerList[]>([]);
+  const [BankID, setBankID] = useState("");
+  const [BankName, setBankName] = useState("");
+  const [getBankData, setgetBankData] = useState<BankList[]>([]);
   const [showMessage, setShowMessage] = useState<string | null>(null);
 
   const eventTrigger = () => {
@@ -52,7 +60,14 @@ export default function OwnerLedgerManagement() {
     setAmount("");
     setNotes("");
   };
-
+  const paymentType = [
+    { ID: "1", label: "Invest" },
+    { ID: "2", label: "Withdraw" },
+  ];
+  const paymentMethodList = [
+    { ID: "1", label: "Cash" },
+    { ID: "2", label: "Bank" },
+  ];
   const EmployeeGet = async () => {
     const token = localStorage.getItem("adminToken");
     const response = await OwnerGetApi(String(token));
@@ -64,6 +79,16 @@ export default function OwnerLedgerManagement() {
     }
   };
 
+  const BankGet = async () => {
+    const token = localStorage.getItem("adminToken");
+    const response = await BankGetApi(String(token));
+    if (response.status == 200) {
+      const data = response.data as responseBankListGet;
+      setgetBankData(data.dataList);
+    } else {
+      setgetBankData([]);
+    }
+  };
   const EmployeeAdd = async () => {
     try {
       setLoading(true);
@@ -74,6 +99,12 @@ export default function OwnerLedgerManagement() {
           ownerID: moduleID,
           postingDate: postingDate,
           amount: Number(Amount),
+          paymentMode: PaymentMethod,
+          paymentType: PaymentType,
+          bankID:
+            PaymentType === "Cash"
+              ? "00000000-0000-0000-0000-000000000000"
+              : BankID,
           remarks: Notes,
         };
         const token = localStorage.getItem("adminToken");
@@ -102,6 +133,12 @@ export default function OwnerLedgerManagement() {
         const formData = {
           ledgerID: ID,
           ownerID: moduleID,
+          paymentMode: PaymentMethod,
+          paymentType: PaymentType,
+          bankID:
+            PaymentType === "Cash"
+              ? "00000000-0000-0000-0000-000000000000"
+              : BankID,
           postingDate: postingDate,
           amount: Number(Amount),
           remarks: Notes,
@@ -125,6 +162,7 @@ export default function OwnerLedgerManagement() {
   };
   useEffect(() => {
     EmployeeGet();
+    BankGet();
   }, []);
   useEffect(() => {
     if (getEmplyeeData) {
@@ -192,7 +230,7 @@ export default function OwnerLedgerManagement() {
               {/* Name - Column 1 */}
 
               {/* Department - Column 2 */}
-              <div className="md:col-span-2">
+              <div className="">
                 <DropDownList
                   label="Owner (مالکان)"
                   required={true}
@@ -209,7 +247,7 @@ export default function OwnerLedgerManagement() {
               </div>
 
               {/* Address - Full Width (both columns) */}
-              <div className="md:col-span-2">
+              <div className="">
                 <InputFieldGeneric
                   label="Posting Date (تاریخ)"
                   type="date"
@@ -220,9 +258,56 @@ export default function OwnerLedgerManagement() {
                   disabled={false}
                 />
               </div>
+              <div className="">
+                <DropDownList
+                  label="Payment Type (ادائیگی کی قسم)"
+                  required={true}
+                  placeholder="Enter Payment Type"
+                  filedID={setPaymentTypeID}
+                  options={paymentType.map((item) => ({
+                    id: item.ID,
+                    label: item.label,
+                    value: item.label,
+                  }))}
+                  value={PaymentType}
+                  onChange={setPaymentType}
+                />
+              </div>
+              <div className="">
+                <label className="block text-sm font-medium text-neutral-700 ">
+                  Payment Method (ادائیگی کا طریقہ)
+                  <span className="text-red-600 text-lg ml-1">*</span>
+                </label>
+                <select
+                  className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm focus:ring-2 focus:ring-neutral-900 focus:outline-none"
+                  value={PaymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                >
+                  <option value="">Select Payment Method</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Bank">Bank</option>
+                </select>
+              </div>
+              {PaymentMethod === "Bank" && (
+                <div className="">
+                  <DropDownList
+                    label="Bank (بینک)"
+                    required={true}
+                    placeholder="Enter Bank"
+                    filedID={setBankID}
+                    options={getBankData.map((item) => ({
+                      id: item.bankID,
+                      label: item.accountTitle,
+                      value: item.accountTitle,
+                    }))}
+                    value={BankName}
+                    onChange={setBankName}
+                  />
+                </div>
+              )}
 
               {/* Amount - Full Width (both columns) */}
-              <div className="md:col-span-2">
+              <div className="">
                 <InputFieldGeneric
                   label="Amount (قیمت)"
                   type="number"

@@ -1,25 +1,23 @@
 "use client";
 import Heading from "@/app/ui/Heading/Heading";
 import PopupComponent from "@/app/ui/PopupComponent/PopupComponent";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import InputFieldGeneric from "@/app/ui/InputField/InputField";
-import DropDownList from "@/app/ui/DropDown/DropDown";
-import TextAreaFieldGeneric from "@/app/ui/TextArea/TextArea";
 import ActionButton from "@/app/ui/ActionButton/ActionButton";
 import MessagePopUp from "@/app/ui/UseFulLComponent/ResponseMessage/ResponseMessage";
-import VehicleAddApi from "@/app/api/Controller/Codes/Vehicle/AddVehicle";
-import VehicleModifyApi from "@/app/api/Controller/Codes/Vehicle/ModifyVehicle";
-import { VehicleList } from "@/app/api/Types/Codes/Vehicle/Vehicle";
-import ExpenseAddApi from "@/app/api/Controller/Codes/Expense/AddExpense";
-import ExpenseModifyApi from "@/app/api/Controller/Codes/Expense/ModifyExpense";
-import { ExpenseList } from "@/app/api/Types/Codes/Expense/Expense";
 
 import LabourAddApi from "@/app/api/Controller/Codes/Labour/AddLabour";
 import LabourModifyApi from "@/app/api/Controller/Codes/Labour/ModifyLabour";
 import LabourGetList from "./LabourGetList";
-import { labourList } from "@/app/api/Types/Codes/Labour/labour";
+import {
+  labourList,
+  responseLabourListGet,
+} from "@/app/api/Types/Codes/Labour/labour";
+import LabourGetApi from "@/app/api/Controller/Codes/Labour/GetLabout";
 
 export default function CategoryManagement() {
+  const hasFetchedEmployees = useRef(false);
+  const [refresh, setRefresh] = useState(0);
   const [ShowForm, setShowForm] = useState(false);
   const [CategoryName, setCategoryName] = useState("");
   const [moduleID, setModuleID] = useState("");
@@ -29,6 +27,8 @@ export default function CategoryManagement() {
   const [loading, setLoading] = useState(false);
   const [ID, setID] = useState("");
   const [getEmplyeeData, setgetEmplyeeData] = useState<labourList>();
+  const [getLabourData, setgetLabourData] = useState<labourList[]>([]);
+  const [isloading, setisLoading] = useState(false);
   const [messageType, setMessageType] = useState<"success" | "error">(
     "success",
   );
@@ -49,10 +49,31 @@ export default function CategoryManagement() {
     setNotes("");
     setUpdate(false);
   };
+  const EmployeeGet = async () => {
+    try {
+      setisLoading(true);
+      const token = localStorage.getItem("adminToken");
+      const response = await LabourGetApi(String(token));
+      if (response.status == 200) {
+        const data = response.data as responseLabourListGet;
+        setgetLabourData(data.dataList);
+      } else {
+        setgetLabourData([]);
+      }
+    } finally {
+      setisLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (hasFetchedEmployees.current) return;
+
+    hasFetchedEmployees.current = true;
+    EmployeeGet();
+  }, []);
   const ExpenseAdd = async () => {
     try {
       setLoading(true);
-      if (!CategoryName || !Module) return alert("Please Fill in Filed with *");
+      if (!CategoryName || !Notes) return alert("Please Fill in Filed with *");
       else {
         const formData = {
           labourType: CategoryName,
@@ -63,9 +84,10 @@ export default function CategoryManagement() {
         if (response.status == 200) {
           setMessageType("success");
           setShowMessage(response.data.message);
+          setRefresh((prev) => prev + 1);
           resetFunction();
+          EmployeeGet();
           setShowForm(false);
-          click();
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -78,11 +100,12 @@ export default function CategoryManagement() {
   const ExpenseModify = async () => {
     try {
       setLoading(true);
-      if (!CategoryName || !Module || !ID)
+      if (!CategoryName || !Notes || !ID)
         return alert("Please Fill in Filed with *");
       else {
         const formData = {
           labourID: ID,
+          qty: 0,
           labourType: CategoryName,
           rateKG: Number(Notes),
         };
@@ -90,10 +113,11 @@ export default function CategoryManagement() {
         const response = await LabourModifyApi(formData, String(token));
         if (response.status == 200) {
           setMessageType("success");
+          setRefresh((prev) => prev + 1);
           setShowMessage(response.data.message);
           resetFunction();
+          EmployeeGet();
           setShowForm(false);
-          click();
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -114,7 +138,7 @@ export default function CategoryManagement() {
       resetFunction();
     }
   }, [getEmplyeeData]);
-  const click = () => {};
+
   return (
     <>
       {showMessage && (
@@ -128,7 +152,7 @@ export default function CategoryManagement() {
       {ShowForm && (
         <PopupComponent
           onClick={eventTrigger}
-          title={update ? "Edit Expense (ترمیم)" : "New Expense (نئی اخراجات)"}
+          title={update ? "Edit Expense (ترمیم)" : "New Labour (نئی اخراجات)"}
         >
           <div className="">
             {/* Two Column Grid with proper spacing */}
@@ -181,7 +205,8 @@ export default function CategoryManagement() {
         <div className="mt-8">
           <LabourGetList
             initalData={setgetEmplyeeData}
-            callbackFunction={() => click()}
+            setgetLabourData={getLabourData}
+            setIsLoading={isloading}
           />
         </div>
       </div>

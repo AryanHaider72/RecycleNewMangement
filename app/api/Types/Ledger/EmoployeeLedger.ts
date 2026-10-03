@@ -2,6 +2,7 @@ export interface responseEmployeeLedgerListGet {
   message: string;
   error: string;
   dataList: employeeLedegrList[];
+  openingBalance: number;
 }
 
 export interface EmployeeLedgerAddRequest {
@@ -9,6 +10,9 @@ export interface EmployeeLedgerAddRequest {
   amount: number;
   postingDate: string;
   remarks: string;
+  paymentType: string;
+  bankID: string;
+  paymentMode: string;
 }
 export interface EmployeeLedgerModifyRequest {
   empID: string;
@@ -16,6 +20,9 @@ export interface EmployeeLedgerModifyRequest {
   amount: number;
   postingDate: string;
   remarks: string;
+  paymentType: string;
+  bankID: string;
+  paymentMode: string;
 }
 
 export interface employeeLedegrList {
@@ -25,6 +32,9 @@ export interface employeeLedegrList {
   creditAmount: number;
   debitAmount: number;
   postingDate: string;
+  runningBalance: number;
+  bankName: string;
+  paymentMode: string;
   status: string;
   remarks: string;
 }

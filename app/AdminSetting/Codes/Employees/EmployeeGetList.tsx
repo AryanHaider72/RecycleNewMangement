@@ -9,17 +9,25 @@ import Spinner from "@/app/ui/UseFulLComponent/Spinner/Spinner";
 import { useEffect, useState } from "react";
 interface EmployeeModifyProps {
   initalData: (data: employeeList) => void;
-  callbackFunction: () => void;
+  setgetEmplyeeDataForList: employeeList[];
+  setIsLoading: boolean;
 }
 export default function EmployeeGetList({
   initalData,
-  callbackFunction,
+  setIsLoading,
+  setgetEmplyeeDataForList,
 }: EmployeeModifyProps) {
   const [SearchEmployee, setSearchEmployee] = useState("");
   const [GenderName, setGenderName] = useState("");
   const [GenderID, setGenderID] = useState<string | null>(null);
   const [getEmplyeeData, setgetEmplyeeData] = useState<employeeList[]>([]);
   const [isloading, setisLoading] = useState(false);
+  useEffect(() => {
+    if (setgetEmplyeeDataForList || setIsLoading) {
+      setisLoading(setIsLoading);
+      setgetEmplyeeData(setgetEmplyeeDataForList);
+    }
+  }, [setgetEmplyeeDataForList, setIsLoading]);
 
   const GenderList = [
     { ID: "1", label: "M1 - Recycling" },
@@ -37,25 +45,6 @@ export default function EmployeeGetList({
     "ACTIONS",
   ];
 
-  const EmployeeGet = async () => {
-    try {
-      setisLoading(true);
-      const token = localStorage.getItem("adminToken");
-      const response = await GetEmployeeApi(String(token));
-      if (response.status == 200) {
-        const data = response.data as responseEmployeeListGet;
-        setgetEmplyeeData(data.dataList);
-      } else {
-        setgetEmplyeeData([]);
-      }
-    } finally {
-      setisLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    EmployeeGet();
-  }, [callbackFunction]);
   const assignData = (ID: string) => {
     const data = getEmplyeeData.find((item) => item.empID === ID);
     if (data) {
@@ -65,15 +54,10 @@ export default function EmployeeGetList({
 
   const filterData = getEmplyeeData.filter((emp) => {
     return (
-      emp?.name.toLowerCase().includes(SearchEmployee.toLowerCase()) ||
-      emp?.cnic.toLowerCase().includes(SearchEmployee.toLowerCase()) ||
-      emp?.phoneNo.toLowerCase().includes(SearchEmployee.toLowerCase()) ||
+      emp?.name.toLowerCase().includes(SearchEmployee.toLowerCase()) &&
       emp?.dept.toLowerCase().includes(GenderName.toLowerCase())
     );
   });
-  useEffect(() => {
-    EmployeeGet();
-  }, []);
   return (
     <>
       <div>
@@ -83,7 +67,7 @@ export default function EmployeeGetList({
               label=""
               type="text"
               required={false}
-              placeholder="Enter Name/Phone/CNIC..."
+              placeholder="Search by Name..."
               SateChange={SearchEmployee}
               setSateChange={setSearchEmployee}
               disabled={false}
@@ -145,7 +129,9 @@ export default function EmployeeGetList({
                       <td className="px-4 py-3">{employee.wagesType}</td>
                       <td className="px-4 py-3">{employee.cnic}</td>
                       <td className="px-4 py-3">{employee.phoneNo}</td>
-                      <td className="px-4 py-3">{employee.salary}</td>
+                      <td className="px-4 py-3">
+                        {employee.salary.toLocaleString()}
+                      </td>
                       <td className="px-4 py-3">{employee.status}</td>
                       <td className="px-4 py-3">
                         <button

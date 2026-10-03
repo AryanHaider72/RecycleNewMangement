@@ -22,6 +22,8 @@ import AddEmployeeLedgerApi from "@/app/api/Controller/Ledger/Employee/AddEmploy
 import ModifyEmployeeLedgerApi from "@/app/api/Controller/Ledger/Employee/ModifyEmployeeLedger";
 import DeleteComponent from "@/app/ui/UseFulLComponent/DeleteComponent/DeleteComponent";
 import DeleteEmployeeLedgerApi from "@/app/api/Controller/Ledger/Employee/DeleteEmployeeLedeger";
+import { BankList, responseBankListGet } from "@/app/api/Types/Codes/Bank/Bank";
+import BankGetApi from "@/app/api/Controller/Codes/Bank/GetBank";
 
 export default function EmployeeLedgerManagement() {
   const [ShowForm, setShowForm] = useState(false);
@@ -34,6 +36,13 @@ export default function EmployeeLedgerManagement() {
   const [loading, setLoading] = useState(false);
   const [ID, setID] = useState("");
   const [DeleteID, setDeleteID] = useState("");
+  const [PaymentTypeID, setPaymentTypeID] = useState("");
+  const [PaymentType, setPaymentType] = useState("");
+  const [PaymentMethod, setPaymentMethod] = useState("Cash");
+  const [BankID, setBankID] = useState("");
+  const [BankName, setBankName] = useState("");
+  const [getBankData, setgetBankData] = useState<BankList[]>([]);
+  const [refresh, setrefresh] = useState(0);
   const [getEmplyeeData, setgetEmplyeeData] = useState<employeeLedegrList>();
   const [messageType, setMessageType] = useState<"success" | "error">(
     "success",
@@ -51,9 +60,30 @@ export default function EmployeeLedgerManagement() {
     setModule("");
     setUpdate(false);
     setAmount("");
+    setPaymentMethod("Cash");
+    setBankName("");
+    setBankID("");
+    setPaymentType("");
     setNotes("");
   };
 
+  const paymentType = [
+    { ID: "1", label: "Bonus" },
+    { ID: "2", label: "Loss" },
+    { ID: "3", label: "Salary" },
+    { ID: "4", label: "Loan" },
+    { ID: "5", label: "Loan Return" },
+    { ID: "6", label: "Salary(KG)" },
+    { ID: "7", label: "Trip Return" },
+    { ID: "8", label: "Driver Payment" },
+    { ID: "9", label: "Company Payment" },
+    { ID: "10", label: "Labour Payment" },
+  ];
+
+  const paymentMethodList = [
+    { ID: "1", label: "Cash" },
+    { ID: "2", label: "Bank" },
+  ];
   const EmployeeGet = async () => {
     const token = localStorage.getItem("adminToken");
     const response = await GetEmployeeApi(String(token));
@@ -62,6 +92,16 @@ export default function EmployeeLedgerManagement() {
       setModuleList(data.dataList);
     } else {
       setModuleList([]);
+    }
+  };
+  const BankGet = async () => {
+    const token = localStorage.getItem("adminToken");
+    const response = await BankGetApi(String(token));
+    if (response.status == 200) {
+      const data = response.data as responseBankListGet;
+      setgetBankData(data.dataList);
+    } else {
+      setgetBankData([]);
     }
   };
 
@@ -75,6 +115,12 @@ export default function EmployeeLedgerManagement() {
           empID: moduleID,
           postingDate: postingDate,
           amount: Number(Amount),
+          paymentMode: PaymentMethod,
+          paymentType: PaymentType,
+          bankID:
+            PaymentMethod === "Cash"
+              ? "00000000-0000-0000-0000-000000000000"
+              : BankID,
           remarks: Notes,
         };
         const token = localStorage.getItem("adminToken");
@@ -84,10 +130,11 @@ export default function EmployeeLedgerManagement() {
           setShowMessage(response.data.message);
           resetFunction();
           setShowForm(false);
-          click();
+          setrefresh((prev) => prev + 1);
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
+          console.log(response);
         }
       }
     } finally {
@@ -106,6 +153,12 @@ export default function EmployeeLedgerManagement() {
           postingDate: postingDate,
           amount: Number(Amount),
           remarks: Notes,
+          paymentMode: PaymentMethod,
+          paymentType: PaymentType,
+          bankID:
+            PaymentMethod === "Cash"
+              ? "00000000-0000-0000-0000-000000000000"
+              : BankID,
         };
         const token = localStorage.getItem("adminToken");
         const response = await ModifyEmployeeLedgerApi(formData, String(token));
@@ -113,8 +166,8 @@ export default function EmployeeLedgerManagement() {
           setMessageType("success");
           setShowMessage(response.data.message);
           resetFunction();
+          setrefresh((prev) => prev + 1);
           setShowForm(false);
-          click();
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -126,6 +179,7 @@ export default function EmployeeLedgerManagement() {
   };
   useEffect(() => {
     EmployeeGet();
+    BankGet();
   }, []);
   useEffect(() => {
     if (getEmplyeeData) {
@@ -136,9 +190,10 @@ export default function EmployeeLedgerManagement() {
       setModuleID(getEmplyeeData.empID);
       setAmount(String(getEmplyeeData.debitAmount));
       setNotes(getEmplyeeData.remarks);
-      setpostingDate(
-        new Date(getEmplyeeData.postingDate).toISOString().split("T")[0],
-      );
+      (setPaymentType(getEmplyeeData.status),
+        setpostingDate(
+          new Date(getEmplyeeData.postingDate).toISOString().split("T")[0],
+        ));
     } else {
       resetFunction();
     }
@@ -193,7 +248,7 @@ export default function EmployeeLedgerManagement() {
               {/* Name - Column 1 */}
 
               {/* Department - Column 2 */}
-              <div className="md:col-span-2">
+              <div className="">
                 <DropDownList
                   label="Employee (ملازم)"
                   required={true}
@@ -210,7 +265,7 @@ export default function EmployeeLedgerManagement() {
               </div>
 
               {/* Address - Full Width (both columns) */}
-              <div className="md:col-span-2">
+              <div className="">
                 <InputFieldGeneric
                   label="Posting Date (تاریخ)"
                   type="date"
@@ -221,9 +276,56 @@ export default function EmployeeLedgerManagement() {
                   disabled={false}
                 />
               </div>
+              <div className="">
+                <DropDownList
+                  label="Payment Type (ادائیگی کی قسم)"
+                  required={true}
+                  placeholder="Enter Payment Type"
+                  filedID={setPaymentTypeID}
+                  options={paymentType.map((item) => ({
+                    id: item.ID,
+                    label: item.label,
+                    value: item.label,
+                  }))}
+                  value={PaymentType}
+                  onChange={setPaymentType}
+                />
+              </div>
+              <div className="">
+                <label className="block text-sm font-medium text-neutral-700 ">
+                  Payment Method (ادائیگی کا طریقہ)
+                  <span className="text-red-600 text-lg ml-1">*</span>
+                </label>
+                <select
+                  className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm focus:ring-2 focus:ring-neutral-900 focus:outline-none"
+                  value={PaymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                >
+                  <option value="">Select Payment Method</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Bank">Bank</option>
+                </select>
+              </div>
+              {PaymentMethod === "Bank" && (
+                <div className="">
+                  <DropDownList
+                    label="Bank (بینک)"
+                    required={true}
+                    placeholder="Enter Bank"
+                    filedID={setBankID}
+                    options={getBankData.map((item) => ({
+                      id: item.bankID,
+                      label: item.accountTitle,
+                      value: item.accountTitle,
+                    }))}
+                    value={BankName}
+                    onChange={setBankName}
+                  />
+                </div>
+              )}
 
               {/* Amount - Full Width (both columns) */}
-              <div className="md:col-span-2">
+              <div className="">
                 <InputFieldGeneric
                   label="Amount (قیمت)"
                   type="number"
@@ -272,7 +374,7 @@ export default function EmployeeLedgerManagement() {
             moduleList={moduleList}
             deleteID={setDeleteID}
             deleteNow={setDelete}
-            callbackFunction={() => click()}
+            refresh={refresh}
           />
         </div>
       </div>

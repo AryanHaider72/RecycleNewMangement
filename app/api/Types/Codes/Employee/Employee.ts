@@ -12,6 +12,7 @@ export interface EmployeeAddRequest {
   wagesType: string;
   cnic: string;
   salary: number;
+  description: string;
   status: string;
 }
 
@@ -24,5 +25,6 @@ export interface employeeList {
   wagesType: string;
   cnic: string;
   salary: number;
+  description: string;
   status: string;
 }

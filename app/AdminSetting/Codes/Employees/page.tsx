@@ -2,7 +2,7 @@
 import Heading from "@/app/ui/Heading/Heading";
 import EmployeeGetList from "./EmployeeGetList";
 import PopupComponent from "@/app/ui/PopupComponent/PopupComponent";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import InputFieldGeneric from "@/app/ui/InputField/InputField";
 import DropDownList from "@/app/ui/DropDown/DropDown";
 import TextAreaFieldGeneric from "@/app/ui/TextArea/TextArea";
@@ -11,9 +11,15 @@ import ActionButton from "@/app/ui/ActionButton/ActionButton";
 import EmployeeAddApi from "@/app/api/Controller/Codes/Employee/AddEmployee";
 import MessagePopUp from "@/app/ui/UseFulLComponent/ResponseMessage/ResponseMessage";
 import EmployeeModifyApi from "@/app/api/Controller/Codes/Employee/ModifyEmployee";
-import { employeeList } from "@/app/api/Types/Codes/Employee/Employee";
+import {
+  employeeList,
+  responseEmployeeListGet,
+} from "@/app/api/Types/Codes/Employee/Employee";
+import GetEmployeeApi from "@/app/api/Controller/Codes/Employee/GetEmployeeApi";
 
 export default function EmployeeManagement() {
+  const hasFetchedEmployees = useRef(false);
+  const [refresh, setRefresh] = useState(0);
   const [ShowForm, setShowForm] = useState(false);
   const [EmployeeName, setEmployeeName] = useState("");
   const [PhoneNo, setPhoneNo] = useState("");
@@ -29,6 +35,10 @@ export default function EmployeeManagement() {
   const [update, setUpdate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ID, setID] = useState("");
+  const [getEmplyeeDataForList, setgetEmplyeeDataForList] = useState<
+    employeeList[]
+  >([]);
+  const [isloading, setisLoading] = useState(false);
   const [getEmplyeeData, setgetEmplyeeData] = useState<employeeList>();
   const [messageType, setMessageType] = useState<"success" | "error">(
     "success",
@@ -61,9 +71,46 @@ export default function EmployeeManagement() {
     setUpdate(false);
     setSalary("");
   };
+  const EmployeeGet = async () => {
+    try {
+      setisLoading(true);
+      const token = localStorage.getItem("adminToken");
+      const response = await GetEmployeeApi(String(token));
+      if (response.status == 200) {
+        const data = response.data as responseEmployeeListGet;
+        setgetEmplyeeDataForList(data.dataList);
+      } else {
+        setgetEmplyeeDataForList([]);
+      }
+    } finally {
+      setisLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (hasFetchedEmployees.current) return;
+
+    hasFetchedEmployees.current = true;
+    EmployeeGet();
+  }, []);
   const EmployeeAdd = async () => {
     try {
       setLoading(true);
+      if (
+        Module !== "M2 - Preform" &&
+        Module !== "M3 - Bottle" &&
+        Module !== "M1 - Recycling"
+      ) {
+        return alert("Please Select From Module List");
+      }
+      if (
+        Wages !== "Daily (روزانہ)" &&
+        Wages !== "By Weight (کلو)" &&
+        Wages !== "Permanent (مستقل)" &&
+        Wages !== "Monthly (ماہانہ)"
+      ) {
+        return alert("Please Select From Wages List");
+      }
+
       if (!EmployeeName || !PhoneNo || !CNIC || !Salary || !Module || !Wages)
         return alert("Please Fill in Filed with *");
       else {
@@ -75,6 +122,7 @@ export default function EmployeeManagement() {
           cnic: CNIC,
           wagesType: Wages,
           salary: Number(Salary),
+          description: Notes,
           status: IsActive ? "Active" : "InActive",
         };
         const token = localStorage.getItem("adminToken");
@@ -83,8 +131,9 @@ export default function EmployeeManagement() {
           setMessageType("success");
           setShowMessage(response.data.message);
           resetFunction();
+          EmployeeGet();
           setShowForm(false);
-          click();
+          setRefresh((prev) => prev + 1);
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -97,6 +146,21 @@ export default function EmployeeManagement() {
   const EmployeeModify = async () => {
     try {
       setLoading(true);
+      if (
+        Module !== "M2 - Preform" &&
+        Module !== "M3 - Bottle" &&
+        Module !== "M1 - Recycling"
+      ) {
+        return alert("Please Select From Module List");
+      }
+      if (
+        Wages !== "Daily (روزانہ)" &&
+        Wages !== "By Weight (کلو)" &&
+        Wages !== "Permanent (مستقل)" &&
+        Wages !== "Monthly (ماہانہ)"
+      ) {
+        return alert("Please Select From Wages List");
+      }
       if (!EmployeeName || !PhoneNo || !CNIC || !Salary || !Module)
         return alert("Please Fill in Filed with *");
       else {
@@ -109,6 +173,7 @@ export default function EmployeeManagement() {
           wagesType: Wages,
           cnic: CNIC,
           salary: Number(Salary),
+          description: Notes,
           status: IsActive ? "Active" : "InActive",
         };
         const token = localStorage.getItem("adminToken");
@@ -117,8 +182,9 @@ export default function EmployeeManagement() {
           setMessageType("success");
           setShowMessage(response.data.message);
           resetFunction();
+          EmployeeGet();
           setShowForm(false);
-          click();
+          setRefresh((prev) => prev + 1);
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -135,6 +201,7 @@ export default function EmployeeManagement() {
       setID(getEmplyeeData.empID);
       setEmployeeName(getEmplyeeData.name);
       setPhoneNo(getEmplyeeData.phoneNo);
+      setNotes(getEmplyeeData.description);
       setCNIC(getEmplyeeData.cnic);
       setWages(getEmplyeeData.wagesType);
       setAddress(getEmplyeeData.address);
@@ -145,7 +212,6 @@ export default function EmployeeManagement() {
       resetFunction();
     }
   }, [getEmplyeeData]);
-  const click = () => {};
   return (
     <>
       {showMessage && (
@@ -303,7 +369,8 @@ export default function EmployeeManagement() {
         <div className="mt-8">
           <EmployeeGetList
             initalData={setgetEmplyeeData}
-            callbackFunction={() => click()}
+            setgetEmplyeeDataForList={getEmplyeeDataForList}
+            setIsLoading={isloading}
           />
         </div>
       </div>

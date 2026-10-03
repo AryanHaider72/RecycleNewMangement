@@ -1,7 +1,7 @@
 "use client";
 import Heading from "@/app/ui/Heading/Heading";
 import PopupComponent from "@/app/ui/PopupComponent/PopupComponent";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import InputFieldGeneric from "@/app/ui/InputField/InputField";
 import DropDownList from "@/app/ui/DropDown/DropDown";
 import TextAreaFieldGeneric from "@/app/ui/TextArea/TextArea";
@@ -9,12 +9,15 @@ import ActionButton from "@/app/ui/ActionButton/ActionButton";
 import MessagePopUp from "@/app/ui/UseFulLComponent/ResponseMessage/ResponseMessage";
 import ExpenseAddApi from "@/app/api/Controller/Codes/Expense/AddExpense";
 import ExpenseModifyApi from "@/app/api/Controller/Codes/Expense/ModifyExpense";
-import { BankList } from "@/app/api/Types/Codes/Bank/Bank";
+import { BankList, responseBankListGet } from "@/app/api/Types/Codes/Bank/Bank";
 import BankGetList from "./BankGetList";
 import BankModifyApi from "@/app/api/Controller/Codes/Bank/ModifyBank";
 import BankAddApi from "@/app/api/Controller/Codes/Bank/AddBank";
+import BankGetApi from "@/app/api/Controller/Codes/Bank/GetBank";
 
 export default function BankManagement() {
+  const hasFetchedEmployees = useRef(false);
+  const [refresh, setRefresh] = useState(0);
   const [ShowForm, setShowForm] = useState(false);
   const [BankName, setBankName] = useState("");
   const [AccountTitle, setAccountTitle] = useState("");
@@ -24,6 +27,9 @@ export default function BankManagement() {
   const [update, setUpdate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ID, setID] = useState("");
+  const [getBankDataForList, setgetBankDataForList] = useState<BankList[]>([]);
+  const [isloading, setisLoading] = useState(false);
+
   const [getEmplyeeData, setgetEmplyeeData] = useState<BankList>();
   const [messageType, setMessageType] = useState<"success" | "error">(
     "success",
@@ -43,6 +49,27 @@ export default function BankManagement() {
     setNotes("");
     setUpdate(false);
   };
+  const EmployeeGet = async () => {
+    try {
+      setisLoading(true);
+      const token = localStorage.getItem("adminToken");
+      const response = await BankGetApi(String(token));
+      if (response.status == 200) {
+        const data = response.data as responseBankListGet;
+        setgetBankDataForList(data.dataList);
+      } else {
+        setgetBankDataForList([]);
+      }
+    } finally {
+      setisLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (hasFetchedEmployees.current) return;
+
+    hasFetchedEmployees.current = true;
+    EmployeeGet();
+  }, []);
   const BankAdd = async () => {
     try {
       setLoading(true);
@@ -62,8 +89,9 @@ export default function BankManagement() {
           setMessageType("success");
           setShowMessage(response.data.message);
           resetFunction();
+          EmployeeGet();
           setShowForm(false);
-          click();
+          setRefresh((prev) => prev + 1);
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -93,8 +121,9 @@ export default function BankManagement() {
           setMessageType("success");
           setShowMessage(response.data.message);
           resetFunction();
+          EmployeeGet();
           setShowForm(false);
-          click();
+          setRefresh((prev) => prev + 1);
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -113,11 +142,11 @@ export default function BankManagement() {
       setOpeningBalance(String(getEmplyeeData.openingBalance));
       setBankName(getEmplyeeData.bankName);
       setID(getEmplyeeData.bankID);
+      setNotes(getEmplyeeData.description);
     } else {
       resetFunction();
     }
   }, [getEmplyeeData]);
-  const click = () => {};
   return (
     <>
       {showMessage && (
@@ -217,7 +246,8 @@ export default function BankManagement() {
         <div className="mt-8">
           <BankGetList
             initalData={setgetEmplyeeData}
-            callbackFunction={() => click()}
+            setgetBankDataForList={getBankDataForList}
+            setIsLoading={isloading}
           />
         </div>
       </div>

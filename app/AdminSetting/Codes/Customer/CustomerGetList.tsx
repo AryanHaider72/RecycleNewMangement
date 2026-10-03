@@ -19,11 +19,13 @@ import Spinner from "@/app/ui/UseFulLComponent/Spinner/Spinner";
 import { useEffect, useState } from "react";
 interface BankModifyProps {
   initalData: (data: CustomerList) => void;
-  callbackFunction: () => void;
+  setgetCustomerData: CustomerList[];
+  setIsLoading: boolean;
 }
 export default function CustomerGetList({
   initalData,
-  callbackFunction,
+  setgetCustomerData,
+  setIsLoading,
 }: BankModifyProps) {
   const [SearchEmployee, setSearchEmployee] = useState("");
   const [GenderName, setGenderName] = useState("");
@@ -31,35 +33,15 @@ export default function CustomerGetList({
   const [getEmplyeeData, setgetEmplyeeData] = useState<CustomerList[]>([]);
   const [isloading, setisLoading] = useState(false);
 
-  const header = [
-    "#",
-    "NAME",
-    "PHONE NO",
-    "ADDRESS",
-    "OPENING BALANCE",
-    "TYPE",
-    "ACTION",
-  ];
-
-  const EmployeeGet = async () => {
-    try {
-      setisLoading(true);
-      const token = localStorage.getItem("adminToken");
-      const response = await CustomerGetApi(String(token));
-      if (response.status == 200) {
-        const data = response.data as responseCustomerListGet;
-        setgetEmplyeeData(data.dataList);
-      } else {
-        setgetEmplyeeData([]);
-      }
-    } finally {
-      setisLoading(false);
-    }
-  };
-
   useEffect(() => {
-    EmployeeGet();
-  }, [callbackFunction]);
+    if (setgetCustomerData || setIsLoading) {
+      setisLoading(setIsLoading);
+      setgetEmplyeeData(setgetCustomerData);
+    }
+  }, [setgetCustomerData, setIsLoading]);
+
+  const header = ["#", "NAME", "PHONE NO", "OPENING BALANCE", "TYPE", "ACTION"];
+
   const assignData = (ID: string) => {
     const data = getEmplyeeData.find((item) => item.customerID === ID);
     if (data) {
@@ -69,13 +51,11 @@ export default function CustomerGetList({
 
   const filterData = getEmplyeeData.filter((emp) => {
     return (
-      emp?.name.toLowerCase().includes(SearchEmployee.toLowerCase()) ||
+      emp?.name.toLowerCase().includes(SearchEmployee.toLowerCase()) &&
       emp?.phoneNo.toLowerCase().includes(GenderName.toLowerCase())
     );
   });
-  useEffect(() => {
-    EmployeeGet();
-  }, []);
+
   return (
     <>
       <div>
@@ -85,7 +65,7 @@ export default function CustomerGetList({
               label=""
               type="text"
               required={false}
-              placeholder="Search by Name/Phone No..."
+              placeholder="Search by Name..."
               SateChange={SearchEmployee}
               setSateChange={setSearchEmployee}
               disabled={false}

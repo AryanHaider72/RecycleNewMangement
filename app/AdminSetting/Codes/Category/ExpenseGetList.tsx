@@ -10,11 +10,13 @@ import Spinner from "@/app/ui/UseFulLComponent/Spinner/Spinner";
 import { useEffect, useState } from "react";
 interface EmployeeModifyProps {
   initalData: (data: ExpenseList) => void;
-  callbackFunction: () => void;
+  setgetExpenseDataForList: ExpenseList[];
+  setIsLoading: boolean;
 }
 export default function ExpenseGetList({
   initalData,
-  callbackFunction,
+  setgetExpenseDataForList,
+  setIsLoading,
 }: EmployeeModifyProps) {
   const [SearchEmployee, setSearchEmployee] = useState("");
   const [GenderName, setGenderName] = useState("");
@@ -22,6 +24,12 @@ export default function ExpenseGetList({
   const [getEmplyeeData, setgetEmplyeeData] = useState<ExpenseList[]>([]);
   const [isloading, setisLoading] = useState(false);
 
+  useEffect(() => {
+    if (setgetExpenseDataForList || setIsLoading) {
+      setisLoading(setIsLoading);
+      setgetEmplyeeData(setgetExpenseDataForList);
+    }
+  }, [setgetExpenseDataForList, setIsLoading]);
   const GenderList = [
     { ID: "1", label: "M1 - Recycling" },
     { ID: "2", label: "M2 - Preform" },
@@ -29,25 +37,6 @@ export default function ExpenseGetList({
   ];
   const header = ["#", "NAME", "EXPENSE CATEGORY", "ACTIONS"];
 
-  const EmployeeGet = async () => {
-    try {
-      setisLoading(true);
-      const token = localStorage.getItem("adminToken");
-      const response = await ExpenseGetApi(String(token));
-      if (response.status == 200) {
-        const data = response.data as responseExpenseListGet;
-        setgetEmplyeeData(data.dataList);
-      } else {
-        setgetEmplyeeData([]);
-      }
-    } finally {
-      setisLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    EmployeeGet();
-  }, [callbackFunction]);
   const assignData = (ID: string) => {
     const data = getEmplyeeData.find((item) => item.expID === ID);
     if (data) {
@@ -57,13 +46,10 @@ export default function ExpenseGetList({
 
   const filterData = getEmplyeeData.filter((emp) => {
     return (
-      emp?.categoryName.toLowerCase().includes(SearchEmployee.toLowerCase()) ||
-      emp?.expenseType.toLowerCase().includes(GenderName.toLowerCase())
+      emp?.categoryName.toLowerCase().includes(SearchEmployee.toLowerCase()) &&
+      emp?.expenseType.includes(GenderName)
     );
   });
-  useEffect(() => {
-    EmployeeGet();
-  }, []);
   return (
     <>
       <div>

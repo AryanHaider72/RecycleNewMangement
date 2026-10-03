@@ -1,30 +1,30 @@
-import GetEmployeeApi from "@/app/api/Controller/Codes/Employee/GetEmployeeApi";
-import GetVehicleApi from "@/app/api/Controller/Codes/Vehicle/GetVehicle";
-import {
-  employeeList,
-  responseEmployeeListGet,
-} from "@/app/api/Types/Codes/Employee/Employee";
-import {
-  responseVehicleListGet,
-  VehicleList,
-} from "@/app/api/Types/Codes/Vehicle/Vehicle";
+import { VehicleList } from "@/app/api/Types/Codes/Vehicle/Vehicle";
 import DropDownList from "@/app/ui/DropDown/DropDown";
 import InputFieldGeneric from "@/app/ui/InputField/InputField";
 import Spinner from "@/app/ui/UseFulLComponent/Spinner/Spinner";
 import { useEffect, useState } from "react";
 interface VehicleModifyProps {
+  setgetVehicleDataForList: VehicleList[];
   initalData: (data: VehicleList) => void;
-  callbackFunction: () => void;
+  setIsLoading: boolean;
 }
 export default function VehicleGetList({
   initalData,
-  callbackFunction,
+  setgetVehicleDataForList,
+  setIsLoading,
 }: VehicleModifyProps) {
   const [SearchEmployee, setSearchEmployee] = useState("");
   const [GenderName, setGenderName] = useState("");
   const [GenderID, setGenderID] = useState<string | null>(null);
   const [getVehicleData, setgetVehicleData] = useState<VehicleList[]>([]);
   const [isloading, setisLoading] = useState(false);
+
+  useEffect(() => {
+    if (setgetVehicleDataForList || setIsLoading) {
+      setisLoading(setIsLoading);
+      setgetVehicleData(setgetVehicleDataForList);
+    }
+  }, [setgetVehicleDataForList, setIsLoading]);
 
   const GenderList = [
     { ID: "1", label: "Own" },
@@ -43,25 +43,6 @@ export default function VehicleGetList({
     "Action",
   ];
 
-  const EmployeeGet = async () => {
-    try {
-      setisLoading(true);
-      const token = localStorage.getItem("adminToken");
-      const response = await GetVehicleApi(String(token));
-      if (response.status == 200) {
-        const data = response.data as responseVehicleListGet;
-        setgetVehicleData(data.dataList);
-      } else {
-        setgetVehicleData([]);
-      }
-    } finally {
-      setisLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    EmployeeGet();
-  }, [callbackFunction]);
   const assignData = (ID: string) => {
     const data = getVehicleData.find((item) => item.vehicleID === ID);
     if (data) {
@@ -71,13 +52,10 @@ export default function VehicleGetList({
 
   const filterData = getVehicleData.filter((emp) => {
     return (
-      emp?.vehicleNo.toLowerCase().includes(SearchEmployee.toLowerCase()) ||
+      emp?.vehicleNo.toLowerCase().includes(SearchEmployee.toLowerCase()) &&
       emp?.ownerShip.toLowerCase().includes(GenderName.toLowerCase())
     );
   });
-  useEffect(() => {
-    EmployeeGet();
-  }, []);
   return (
     <>
       <div>
@@ -147,18 +125,22 @@ export default function VehicleGetList({
                       <td className="px-4 py-3">{index + 1}</td>
                       <td className="px-4 py-3">{employee.vehicleNo}</td>
                       <td className="px-4 py-3">
-                        {employee.openingMeterReading}
+                        {employee.openingMeterReading.toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
-                        {employee.positiveThreshold}
+                        {employee.positiveThreshold.toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
-                        {employee.scrapCarryThreshold}
+                        {employee.scrapCarryThreshold.toLocaleString()}
                       </td>
-                      <td className="px-4 py-3">{employee.scrapRatePerKG}</td>
-                      <td className="px-4 py-3">{employee.bottleRatePerPcs}</td>
                       <td className="px-4 py-3">
-                        {employee.openingInvestment}
+                        {employee.scrapRatePerKG.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        {employee.bottleRatePerPcs.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        {employee.openingInvestment.toLocaleString()}
                       </td>
                       <td className="px-4 py-3">{employee.ownerShip}</td>
                       <td className="px-4 py-3">

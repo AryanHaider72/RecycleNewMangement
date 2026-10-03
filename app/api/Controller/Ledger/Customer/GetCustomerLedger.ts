@@ -4,7 +4,7 @@ interface datainterfacea {
   dateTo: string;
   customerID: string;
 }
-import { postRequest } from "@/app/api/Main/main";
+import { getRequest } from "@/app/api/Main/main";
 
 export default async function GetCustomerLedgerApi(
   data: datainterfacea,
@@ -16,8 +16,8 @@ export default async function GetCustomerLedgerApi(
     customHeader.Authorization = `Bearer ${token}`;
   }
 
-  const response = await postRequest(
-    `/api/Customer/Ledger/GetCustomerLedger`,
+  const response = await getRequest(
+    `/api/Customer/Ledger/GetCustomerLedger?customerID=${data.customerID}&dateFrom=${data.dateFrom}&dateTo=${data.dateTo}`,
     data,
     customHeader,
   );

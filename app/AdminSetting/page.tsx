@@ -1,13 +1,14 @@
 // components/AdminSidebar.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import CheckAuth from "../api/Controller/Authentication/checkAuth";
 import LogoutApi from "../api/Controller/Authentication/Logout";
 import {
   Banknote,
+  Box,
   Briefcase,
   BriefcaseBusinessIcon,
   BriefcaseConveyorBelt,
@@ -16,12 +17,17 @@ import {
   ChevronDown,
   ChevronRight,
   Code2,
+  CoinsIcon,
   DollarSign,
   Hammer,
+  HandCoins,
+  Handshake,
   LayoutDashboard,
   List,
   LogOut,
   Menu,
+  NotebookIcon,
+  Package,
   Scale,
   ShieldUser,
   Truck,
@@ -33,6 +39,7 @@ import {
 } from "lucide-react";
 
 export default function AdminSidebar() {
+  const hasFetchedEmployees = useRef(false);
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true); // Start open on desktop
@@ -44,13 +51,32 @@ export default function AdminSidebar() {
   });
 
   const navigation = [
+    // {
+    //   heading: "",
+    //   id: "dashboard",
+    //   label: "Dashboard (ڈیش بورڈ)",
+    //   icon: LayoutDashboard,
+    //   href: "/AdminSetting/Dashboard",
+    //   type: "link",
+    // },
     {
-      heading: "",
-      id: "dashboard",
-      label: "Dashboard (ڈیش بورڈ)",
-      icon: LayoutDashboard,
-      href: "/AdminSetting/Dashboard",
-      type: "link",
+      heading: "Other Options (دیگر اختیارات)",
+      subHeading: [
+        {
+          id: "attendance",
+          label: "Attendance (حاضری)",
+          icon: LayoutDashboard,
+          href: "/AdminSetting/Basic/Attendance",
+          type: "link",
+        },
+        {
+          id: "cashinhand",
+          label: "Cash in Hand (نقد رقم)",
+          icon: HandCoins,
+          href: "/AdminSetting/Basic/CashInHand",
+          type: "link",
+        },
+      ],
     },
     {
       heading: "MASTER DATA (ماسٹر ڈیٹا)",
@@ -67,6 +93,13 @@ export default function AdminSidebar() {
           label: "Vehicle (گاڑی)",
           icon: Truck,
           href: "/AdminSetting/Codes/Vehicle",
+          type: "link",
+        },
+        {
+          id: "product",
+          label: "Product (پروڈکٹ)",
+          icon: Package,
+          href: "/AdminSetting/Codes/Product",
           type: "link",
         },
         {
@@ -137,6 +170,20 @@ export default function AdminSidebar() {
           href: "/AdminSetting/Module1/Expense",
           type: "link",
         },
+        {
+          id: "endproduct",
+          label: "End-Product (حتمی پروڈکٹ )",
+          icon: Box,
+          href: "/AdminSetting/Module1/EndProduct",
+          type: "link",
+        },
+        {
+          id: "saleModule",
+          label: "Sale Module (فروخت کا ماڈیول)",
+          icon: Handshake,
+          href: "/AdminSetting/Module1/SaleModule",
+          type: "link",
+        },
       ],
     },
     {
@@ -170,18 +217,51 @@ export default function AdminSidebar() {
           href: "/AdminSetting/Ledger/Owner",
           type: "link",
         },
-        {
-          id: "vehicle",
-          label: "Vehicle (گاڑیاں)",
-          icon: Car,
-          href: "/AdminSetting/Ledger/Vehicle",
-          type: "link",
-        },
+        // {
+        //   id: "vehicle",
+        //   label: "Vehicle (گاڑیاں)",
+        //   icon: Car,
+        //   href: "/AdminSetting/Ledger/Vehicle",
+        //   type: "link",
+        // },
         {
           id: "bank",
           label: "Bank (بینک)",
           icon: Building,
           href: "/AdminSetting/Ledger/Bank",
+          type: "link",
+        },
+      ],
+    },
+    {
+      heading: "Reports (رپورٹس)",
+      subHeading: [
+        {
+          id: "purchaseTripReports",
+          label: "Purchase Trip Reports (ٹرپ رپورٹ)",
+          icon: CoinsIcon,
+          href: "/AdminSetting/Report/PurchaseTrip",
+          type: "link",
+        },
+        {
+          id: "expenseReports",
+          label: "Expense Reports (اخراجات)",
+          icon: NotebookIcon,
+          href: "/AdminSetting/Report/Expense",
+          type: "link",
+        },
+        {
+          id: "cashflowReort",
+          label: "Cash Flow  (نقد بہاؤ)",
+          icon: CoinsIcon,
+          href: "/AdminSetting/Report/CashFlow",
+          type: "link",
+        },
+        {
+          id: "inventory",
+          label: "Inventory Report  (انوینٹری رپورٹ)",
+          icon: CoinsIcon,
+          href: "/AdminSetting/Report/Inventory",
           type: "link",
         },
       ],
@@ -208,6 +288,9 @@ export default function AdminSidebar() {
   };
 
   useEffect(() => {
+    if (hasFetchedEmployees.current) return;
+
+    hasFetchedEmployees.current = true;
     checkAuth();
   }, []);
 
@@ -302,23 +385,24 @@ export default function AdminSidebar() {
                   </Link>
                 ))
               ) : (
-                <Link
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`group flex items-center gap-3 rounded-xl px-4 py-3 font-medium transition-all duration-300 ${
-                    isActive(item.href)
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
-                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                  }`}
-                >
-                  <item.icon className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+                <></>
+                // <Link
+                //   href={item.href}
+                //   onClick={() => setSidebarOpen(false)}
+                //   className={`group flex items-center gap-3 rounded-xl px-4 py-3 font-medium transition-all duration-300 ${
+                //     isActive(item.href)
+                //       ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                //       : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                //   }`}
+                // >
+                //   <item.icon className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
 
-                  <span>{item.label}</span>
+                //   <span>{item.label}</span>
 
-                  {isActive(item.href) && (
-                    <div className="ml-auto h-2 w-2 rounded-full bg-white"></div>
-                  )}
-                </Link>
+                //   {isActive(item.href) && (
+                //     <div className="ml-auto h-2 w-2 rounded-full bg-white"></div>
+                //   )}
+                // </Link>
               )}
             </div>
           ))}

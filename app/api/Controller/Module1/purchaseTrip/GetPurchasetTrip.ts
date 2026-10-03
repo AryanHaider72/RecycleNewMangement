@@ -2,14 +2,18 @@
 
 import { getRequest } from "@/app/api/Main/main";
 
-export default async function PurchaseTripGetApi(token?: string) {
+export default async function PurchaseTripGetApi(
+  dateFrom: string,
+  dateTo: string,
+  token?: string,
+) {
   const customHeader: Record<string, string> = {};
 
   if (token) {
     customHeader.Authorization = `Bearer ${token}`;
   }
   const response = await getRequest(
-    `/api/PurchaseTrip/GetPurchaseTrip`,
+    `/api/PurchaseTrip/GetPurchaseTrip?dateFrom=${dateFrom}&dateTo=${dateTo}`,
     null,
     customHeader,
   );

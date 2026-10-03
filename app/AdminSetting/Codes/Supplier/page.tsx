@@ -1,31 +1,35 @@
 "use client";
 import Heading from "@/app/ui/Heading/Heading";
 import PopupComponent from "@/app/ui/PopupComponent/PopupComponent";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import InputFieldGeneric from "@/app/ui/InputField/InputField";
 import TextAreaFieldGeneric from "@/app/ui/TextArea/TextArea";
 import ActionButton from "@/app/ui/ActionButton/ActionButton";
 import MessagePopUp from "@/app/ui/UseFulLComponent/ResponseMessage/ResponseMessage";
 
-import { CustomerList } from "@/app/api/Types/Codes/Customer/Customer";
-import CustomerModifyApi from "@/app/api/Controller/Codes/Customer/CustomerModify";
-import CustomerAddApi from "@/app/api/Controller/Codes/Customer/CustomerAdd";
 import SupplierAddApi from "@/app/api/Controller/Codes/Supplier/AddSupplier";
 import SupplierModifyApi from "@/app/api/Controller/Codes/Supplier/ModifySupplier";
 import SupplierGetList from "./SupplierGetList";
-import { SupplierList } from "@/app/api/Types/Codes/Supplier/Supplier";
+import {
+  responseSupplierListGet,
+  SupplierList,
+} from "@/app/api/Types/Codes/Supplier/Supplier";
 import DropDownList from "@/app/ui/DropDown/DropDown";
+import SupplierGetApi from "@/app/api/Controller/Codes/Supplier/GetSupplier";
 
 export default function CustomerManagement() {
+  const hasFetchedEmployees = useRef(false);
   const [ShowForm, setShowForm] = useState(false);
   const [Name, setName] = useState("");
   const [PhoneNo, setPhoneNo] = useState("");
   const [Address, setAddress] = useState("");
   const [OpeningBalance, setOpeningBalance] = useState("");
   const [Notes, setNotes] = useState("");
+
   const [update, setUpdate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ID, setID] = useState("");
+  const [refresh, setRefresh] = useState(0);
   const [getEmplyeeData, setgetEmplyeeData] = useState<SupplierList>();
   const [messageType, setMessageType] = useState<"success" | "error">(
     "success",
@@ -33,9 +37,11 @@ export default function CustomerManagement() {
   const [AccountType, setAccountType] = useState("");
   const [AccountID, setAccountID] = useState("");
   const [showMessage, setShowMessage] = useState<string | null>(null);
+  const [getSupplierData, setgetSupplierData] = useState<SupplierList[]>([]);
+  const [isloading, setisLoading] = useState(false);
 
   const accountType = [
-    { ID: "1", label: "Scrap Dealer (اسکریپ ڈیلر)", value: "ScrapDealer" },
+    { ID: "1", label: "Scrap Dealer (اسکریپ ڈیلر)", value: "Scrap Dealer" },
     { ID: "2", label: "Vendor (وینڈر)", value: "Vendor" },
     { ID: "3", label: "Pump (پمپ)", value: "Pump" },
   ];
@@ -52,9 +58,37 @@ export default function CustomerManagement() {
     setNotes("");
     setUpdate(false);
   };
+  const EmployeeGet = async () => {
+    try {
+      setisLoading(true);
+      const token = localStorage.getItem("adminToken");
+      const response = await SupplierGetApi(String(token));
+      if (response.status == 200) {
+        const data = response.data as responseSupplierListGet;
+        setgetSupplierData(data.dataList);
+      } else {
+        setgetSupplierData([]);
+      }
+    } finally {
+      setisLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (hasFetchedEmployees.current) return;
+
+    hasFetchedEmployees.current = true;
+    EmployeeGet();
+  }, []);
   const SupplierAdd = async () => {
     try {
       setLoading(true);
+      if (
+        AccountType !== "Scrap Dealer" &&
+        AccountType !== "Vendor" &&
+        AccountType !== "Pump"
+      ) {
+        return alert("Please Select From Supplier Type");
+      }
       if (!Name || !Address || !PhoneNo)
         return alert("Please Fill in Filed with *");
       else {
@@ -72,8 +106,9 @@ export default function CustomerManagement() {
           setMessageType("success");
           setShowMessage(response.data.message);
           resetFunction();
+          EmployeeGet();
           setShowForm(false);
-          click();
+          setRefresh((prev) => prev + 1);
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -86,6 +121,13 @@ export default function CustomerManagement() {
   const SupplierModify = async () => {
     try {
       setLoading(true);
+      if (
+        AccountType !== "Scrap Dealer" &&
+        AccountType !== "Vendor" &&
+        AccountType !== "Pump"
+      ) {
+        return alert("Please Select From Supplier Type");
+      }
       if (!Name || !Address || !PhoneNo || !ID)
         return alert("Please Fill in Filed with *");
       else {
@@ -104,8 +146,9 @@ export default function CustomerManagement() {
           setMessageType("success");
           setShowMessage(response.data.message);
           resetFunction();
+          EmployeeGet();
           setShowForm(false);
-          click();
+          setRefresh((prev) => prev + 1);
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -120,6 +163,7 @@ export default function CustomerManagement() {
       setUpdate(true);
       setShowForm(true);
       setAddress(getEmplyeeData.address);
+      setAccountType(getEmplyeeData.accountType);
       setPhoneNo(getEmplyeeData.phoneNo);
       setOpeningBalance(String(getEmplyeeData.openingBalance));
       setName(getEmplyeeData.name);
@@ -129,7 +173,6 @@ export default function CustomerManagement() {
       resetFunction();
     }
   }, [getEmplyeeData]);
-  const click = () => {};
   return (
     <>
       {showMessage && (
@@ -223,11 +266,11 @@ export default function CustomerManagement() {
 
             <div className="flex justify-end mt-2">
               <ActionButton
-                text={update ? "Update (اپ ڈیٹ)" : "Add Customer (شامل کریں)"}
+                text={update ? "Update (اپ ڈیٹ)" : "Add Supplier (شامل کریں)"}
                 update={loading}
                 loading={loading}
                 size={"w-full"}
-                loadingtext={update ? "Updating..." : "Adding Customer..."}
+                loadingtext={update ? "Updating..." : "Adding Supplier..."}
                 onClick={() => (update ? SupplierModify() : SupplierAdd())}
                 disabled={false}
               />
@@ -244,7 +287,8 @@ export default function CustomerManagement() {
         <div className="mt-8">
           <SupplierGetList
             initalData={setgetEmplyeeData}
-            callbackFunction={() => click()}
+            setgetSupplierData={getSupplierData}
+            setIsLoading={isloading}
           />
         </div>
       </div>

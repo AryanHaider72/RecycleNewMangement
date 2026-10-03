@@ -1,34 +1,21 @@
-import BankGetApi from "@/app/api/Controller/Codes/Bank/GetBank";
-import CustomerGetApi from "@/app/api/Controller/Codes/Customer/CustomerGet";
-import ExpenseGetApi from "@/app/api/Controller/Codes/Expense/GetExpense";
-import OwnerGetApi from "@/app/api/Controller/Codes/Owner/GetOwner";
 import SupplierGetApi from "@/app/api/Controller/Codes/Supplier/GetSupplier";
-import { BankList, responseBankListGet } from "@/app/api/Types/Codes/Bank/Bank";
-import {
-  CustomerList,
-  responseCustomerListGet,
-} from "@/app/api/Types/Codes/Customer/Customer";
 
-import {
-  ExpenseList,
-  responseExpenseListGet,
-} from "@/app/api/Types/Codes/Expense/Expense";
-import { responseOwnerListGet } from "@/app/api/Types/Codes/Owner/Owner";
 import {
   responseSupplierListGet,
   SupplierList,
 } from "@/app/api/Types/Codes/Supplier/Supplier";
-import DropDownList from "@/app/ui/DropDown/DropDown";
 import InputFieldGeneric from "@/app/ui/InputField/InputField";
 import Spinner from "@/app/ui/UseFulLComponent/Spinner/Spinner";
 import { useEffect, useState } from "react";
 interface BankModifyProps {
   initalData: (data: SupplierList) => void;
-  callbackFunction: () => void;
+  setgetSupplierData: SupplierList[];
+  setIsLoading: boolean;
 }
 export default function SupplierGetList({
   initalData,
-  callbackFunction,
+  setgetSupplierData,
+  setIsLoading,
 }: BankModifyProps) {
   const [SearchEmployee, setSearchEmployee] = useState("");
   const [GenderName, setGenderName] = useState("");
@@ -36,34 +23,22 @@ export default function SupplierGetList({
   const [getEmplyeeData, setgetEmplyeeData] = useState<SupplierList[]>([]);
   const [isloading, setisLoading] = useState(false);
 
+  useEffect(() => {
+    if (setgetSupplierData || setIsLoading) {
+      setisLoading(setIsLoading);
+      setgetEmplyeeData(setgetSupplierData);
+    }
+  }, [setgetSupplierData, setIsLoading]);
+
   const header = [
     "#",
     "NAME",
     "PHONE NO",
-    "ADDRESS",
+    "ACCOUNT TYPE",
     "OPENING BALANCE",
     "ACTION",
   ];
 
-  const EmployeeGet = async () => {
-    try {
-      setisLoading(true);
-      const token = localStorage.getItem("adminToken");
-      const response = await SupplierGetApi(String(token));
-      if (response.status == 200) {
-        const data = response.data as responseSupplierListGet;
-        setgetEmplyeeData(data.dataList);
-      } else {
-        setgetEmplyeeData([]);
-      }
-    } finally {
-      setisLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    EmployeeGet();
-  }, [callbackFunction]);
   const assignData = (ID: string) => {
     const data = getEmplyeeData.find((item) => item.supplierID === ID);
     if (data) {
@@ -77,9 +52,7 @@ export default function SupplierGetList({
       emp?.phoneNo.toLowerCase().includes(GenderName.toLowerCase())
     );
   });
-  useEffect(() => {
-    EmployeeGet();
-  }, []);
+
   return (
     <>
       <div>
@@ -134,6 +107,7 @@ export default function SupplierGetList({
                       <td className="px-4 py-3">{index + 1}</td>
                       <td className="px-4 py-3">{employee.name}</td>
                       <td className="px-4 py-3">{employee.phoneNo}</td>
+                      <td className="px-4 py-3">{employee.accountType}</td>
                       <td className="px-4 py-3">{employee.openingBalance}</td>
                       <td className="px-4 py-3">
                         <button

@@ -3,7 +3,7 @@
 interface datainterfacea {
   dateFrom: string;
   dateTo: string;
-  empID: string;
+  supplierID: string;
 }
 import { postRequest } from "@/app/api/Main/main";
 

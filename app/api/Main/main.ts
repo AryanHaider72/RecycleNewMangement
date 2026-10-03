@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  //baseURL: "https://sonuspk.premiermegamall.com/",
-  baseURL: "http://localhost:9092/",
+  baseURL: "http://182.191.80.195:9095/",
+  //baseURL: "http://localhost:9095/",
   headers: {
     "Content-Type": "application/json",
   },

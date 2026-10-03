@@ -1,7 +1,7 @@
 "use client";
 import Heading from "@/app/ui/Heading/Heading";
 import PopupComponent from "@/app/ui/PopupComponent/PopupComponent";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import InputFieldGeneric from "@/app/ui/InputField/InputField";
 import DropDownList from "@/app/ui/DropDown/DropDown";
 import TextAreaFieldGeneric from "@/app/ui/TextArea/TextArea";
@@ -12,10 +12,15 @@ import VehicleModifyApi from "@/app/api/Controller/Codes/Vehicle/ModifyVehicle";
 import { VehicleList } from "@/app/api/Types/Codes/Vehicle/Vehicle";
 import ExpenseAddApi from "@/app/api/Controller/Codes/Expense/AddExpense";
 import ExpenseModifyApi from "@/app/api/Controller/Codes/Expense/ModifyExpense";
-import { ExpenseList } from "@/app/api/Types/Codes/Expense/Expense";
+import {
+  ExpenseList,
+  responseExpenseListGet,
+} from "@/app/api/Types/Codes/Expense/Expense";
 import ExpenseGetList from "./ExpenseGetList";
+import ExpenseGetApi from "@/app/api/Controller/Codes/Expense/GetExpense";
 
 export default function CategoryManagement() {
+  const hasFetchedEmployees = useRef(false);
   const [ShowForm, setShowForm] = useState(false);
   const [CategoryName, setCategoryName] = useState("");
   const [moduleID, setModuleID] = useState("");
@@ -25,6 +30,11 @@ export default function CategoryManagement() {
   const [loading, setLoading] = useState(false);
   const [ID, setID] = useState("");
   const [getEmplyeeData, setgetEmplyeeData] = useState<ExpenseList>();
+  const [getExpenseDataForList, setgetExpenseDataForList] = useState<
+    ExpenseList[]
+  >([]);
+  const [isloading, setisLoading] = useState(false);
+  const [refresh, setRefresh] = useState(0);
   const [messageType, setMessageType] = useState<"success" | "error">(
     "success",
   );
@@ -45,9 +55,38 @@ export default function CategoryManagement() {
     setNotes("");
     setUpdate(false);
   };
+
+  const EmployeeGet = async () => {
+    try {
+      setisLoading(true);
+      const token = localStorage.getItem("adminToken");
+      const response = await ExpenseGetApi(String(token));
+      if (response.status == 200) {
+        const data = response.data as responseExpenseListGet;
+        setgetExpenseDataForList(data.dataList);
+      } else {
+        setgetExpenseDataForList([]);
+      }
+    } finally {
+      setisLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (hasFetchedEmployees.current) return;
+
+    hasFetchedEmployees.current = true;
+    EmployeeGet();
+  }, []);
   const ExpenseAdd = async () => {
     try {
       setLoading(true);
+      if (
+        Module !== "M2 - Preform" &&
+        Module !== "M3 - Bottle" &&
+        Module !== "M1 - Recycling"
+      ) {
+        return alert("Please Select From Module List");
+      }
       if (!CategoryName || !Module) return alert("Please Fill in Filed with *");
       else {
         const formData = {
@@ -62,7 +101,8 @@ export default function CategoryManagement() {
           setShowMessage(response.data.message);
           resetFunction();
           setShowForm(false);
-          click();
+          EmployeeGet();
+          setRefresh((prev) => prev + 1);
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -75,6 +115,13 @@ export default function CategoryManagement() {
   const ExpenseModify = async () => {
     try {
       setLoading(true);
+      if (
+        Module !== "M2 - Preform" &&
+        Module !== "M3 - Bottle" &&
+        Module !== "M1 - Recycling"
+      ) {
+        return alert("Please Select From Module List");
+      }
       if (!CategoryName || !Module || !ID)
         return alert("Please Fill in Filed with *");
       else {
@@ -87,11 +134,13 @@ export default function CategoryManagement() {
         const token = localStorage.getItem("adminToken");
         const response = await ExpenseModifyApi(formData, String(token));
         if (response.status == 200) {
+          setRefresh((prev) => prev + 1);
+
           setMessageType("success");
           setShowMessage(response.data.message);
           resetFunction();
           setShowForm(false);
-          click();
+          EmployeeGet();
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -108,11 +157,11 @@ export default function CategoryManagement() {
       setCategoryName(getEmplyeeData.categoryName);
       setID(getEmplyeeData.expID);
       setModule(getEmplyeeData.expenseType);
+      setNotes(getEmplyeeData.description);
     } else {
       resetFunction();
     }
   }, [getEmplyeeData]);
-  const click = () => {};
   return (
     <>
       {showMessage && (
@@ -195,7 +244,8 @@ export default function CategoryManagement() {
         <div className="mt-8">
           <ExpenseGetList
             initalData={setgetEmplyeeData}
-            callbackFunction={() => click()}
+            setgetExpenseDataForList={getExpenseDataForList}
+            setIsLoading={isloading}
           />
         </div>
       </div>

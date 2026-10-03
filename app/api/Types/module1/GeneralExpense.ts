@@ -1,6 +1,7 @@
 export interface RequeestAddGeneralExpense {
-  expenseName: string;
+  categoryID: string;
   expnseType: string;
+  bankID: string;
   expenseDate: string;
   expenseAmount: number;
   paymentMethod: string;
@@ -13,10 +14,14 @@ export interface GetExpenseListResposne {
 }
 export interface generalExpenseList {
   expenseID: string;
-  expenseName: string;
+  categoryID: string;
+  expenseName?: string;
   expnseType: string;
+  bankID: string;
+  bankName?: string;
   expenseDate: string;
   expenseAmount: number;
   paymentMethod: string;
+  status?: string;
   description: string;
 }

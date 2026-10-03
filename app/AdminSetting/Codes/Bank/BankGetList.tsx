@@ -1,28 +1,30 @@
-import BankGetApi from "@/app/api/Controller/Codes/Bank/GetBank";
-import ExpenseGetApi from "@/app/api/Controller/Codes/Expense/GetExpense";
-import { BankList, responseBankListGet } from "@/app/api/Types/Codes/Bank/Bank";
+import { BankList } from "@/app/api/Types/Codes/Bank/Bank";
 
-import {
-  ExpenseList,
-  responseExpenseListGet,
-} from "@/app/api/Types/Codes/Expense/Expense";
-import DropDownList from "@/app/ui/DropDown/DropDown";
 import InputFieldGeneric from "@/app/ui/InputField/InputField";
 import Spinner from "@/app/ui/UseFulLComponent/Spinner/Spinner";
 import { useEffect, useState } from "react";
 interface BankModifyProps {
   initalData: (data: BankList) => void;
-  callbackFunction: () => void;
+  setgetBankDataForList: BankList[];
+  setIsLoading: boolean;
 }
 export default function BankGetList({
   initalData,
-  callbackFunction,
+  setgetBankDataForList,
+  setIsLoading,
 }: BankModifyProps) {
   const [SearchEmployee, setSearchEmployee] = useState("");
   const [GenderName, setGenderName] = useState("");
   const [GenderID, setGenderID] = useState<string | null>(null);
   const [getEmplyeeData, setgetEmplyeeData] = useState<BankList[]>([]);
   const [isloading, setisLoading] = useState(false);
+
+  useEffect(() => {
+    if (setgetBankDataForList || setIsLoading) {
+      setisLoading(setIsLoading);
+      setgetEmplyeeData(setgetBankDataForList);
+    }
+  }, [setgetBankDataForList, setIsLoading]);
 
   const header = [
     "#",
@@ -33,25 +35,6 @@ export default function BankGetList({
     "ACTION",
   ];
 
-  const EmployeeGet = async () => {
-    try {
-      setisLoading(true);
-      const token = localStorage.getItem("adminToken");
-      const response = await BankGetApi(String(token));
-      if (response.status == 200) {
-        const data = response.data as responseBankListGet;
-        setgetEmplyeeData(data.dataList);
-      } else {
-        setgetEmplyeeData([]);
-      }
-    } finally {
-      setisLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    EmployeeGet();
-  }, [callbackFunction]);
   const assignData = (ID: string) => {
     const data = getEmplyeeData.find((item) => item.bankID === ID);
     if (data) {
@@ -61,14 +44,12 @@ export default function BankGetList({
 
   const filterData = getEmplyeeData.filter((emp) => {
     return (
-      emp?.bankName.toLowerCase().includes(SearchEmployee.toLowerCase()) ||
-      emp?.accountTitle.toLowerCase().includes(GenderName.toLowerCase()) ||
+      emp?.bankName.toLowerCase().includes(SearchEmployee.toLowerCase()) &&
+      emp?.accountTitle.toLowerCase().includes(GenderName.toLowerCase()) &&
       emp?.accountNumber.toLowerCase().includes(GenderName.toLowerCase())
     );
   });
-  useEffect(() => {
-    EmployeeGet();
-  }, []);
+
   return (
     <>
       <div>
@@ -101,7 +82,7 @@ export default function BankGetList({
           <tbody className=" divide-y divide-gray-200">
             {isloading ? (
               <tr>
-                <td colSpan={4} className="py-10 text-center">
+                <td colSpan={7} className="py-10 text-center">
                   <Spinner />
                 </td>
               </tr>
@@ -110,7 +91,7 @@ export default function BankGetList({
                 {filterData.length === 0 ? (
                   <>
                     <tr>
-                      <td colSpan={4} className="py-10 text-center">
+                      <td colSpan={7} className="py-10 text-center">
                         <span className="text-lg font-semibold text-gray-500">
                           No Record Found
                         </span>

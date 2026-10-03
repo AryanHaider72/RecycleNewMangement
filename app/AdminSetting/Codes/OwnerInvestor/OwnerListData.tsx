@@ -17,11 +17,13 @@ import Spinner from "@/app/ui/UseFulLComponent/Spinner/Spinner";
 import { useEffect, useState } from "react";
 interface BankModifyProps {
   initalData: (data: OwnerList) => void;
-  callbackFunction: () => void;
+  setGetOwnerDateForList: OwnerList[];
+  setIsLoading: boolean;
 }
 export default function OwnerGetList({
   initalData,
-  callbackFunction,
+  setGetOwnerDateForList,
+  setIsLoading,
 }: BankModifyProps) {
   const [SearchEmployee, setSearchEmployee] = useState("");
   const [GenderName, setGenderName] = useState("");
@@ -29,35 +31,14 @@ export default function OwnerGetList({
   const [getEmplyeeData, setgetEmplyeeData] = useState<OwnerList[]>([]);
   const [isloading, setisLoading] = useState(false);
 
-  const header = [
-    "#",
-    "NAME",
-    "PHONE NO",
-    "ADDRESS",
-    "OPENING BALANCE",
-    "Type",
-    "ACTION",
-  ];
-
-  const EmployeeGet = async () => {
-    try {
-      setisLoading(true);
-      const token = localStorage.getItem("adminToken");
-      const response = await OwnerGetApi(String(token));
-      if (response.status == 200) {
-        const data = response.data as responseOwnerListGet;
-        setgetEmplyeeData(data.dataList);
-      } else {
-        setgetEmplyeeData([]);
-      }
-    } finally {
-      setisLoading(false);
-    }
-  };
-
   useEffect(() => {
-    EmployeeGet();
-  }, [callbackFunction]);
+    if (setGetOwnerDateForList || setIsLoading) {
+      setisLoading(setIsLoading);
+      setgetEmplyeeData(setGetOwnerDateForList);
+    }
+  }, [setGetOwnerDateForList, setIsLoading]);
+  const header = ["#", "NAME", "PHONE NO", "OPENING BALANCE", "Type", "ACTION"];
+
   const assignData = (ID: string) => {
     const data = getEmplyeeData.find((item) => item.ownerID === ID);
     if (data) {
@@ -66,14 +47,9 @@ export default function OwnerGetList({
   };
 
   const filterData = getEmplyeeData.filter((emp) => {
-    return (
-      emp?.name.toLowerCase().includes(SearchEmployee.toLowerCase()) ||
-      emp?.phoneNo.toLowerCase().includes(GenderName.toLowerCase())
-    );
+    return emp?.name.toLowerCase().includes(SearchEmployee.toLowerCase());
   });
-  useEffect(() => {
-    EmployeeGet();
-  }, []);
+
   return (
     <>
       <div>
@@ -128,7 +104,9 @@ export default function OwnerGetList({
                       <td className="px-4 py-3">{index + 1}</td>
                       <td className="px-4 py-3">{employee.name}</td>
                       <td className="px-4 py-3">{employee.phoneNo}</td>
-                      <td className="px-4 py-3">{employee.openingBalance}</td>
+                      <td className="px-4 py-3">
+                        {employee.openingBalance.toLocaleString()}
+                      </td>
                       <td className="px-4 py-3">{employee.type}</td>
                       <td className="px-4 py-3">
                         <button

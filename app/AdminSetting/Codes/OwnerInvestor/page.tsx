@@ -1,7 +1,7 @@
 "use client";
 import Heading from "@/app/ui/Heading/Heading";
 import PopupComponent from "@/app/ui/PopupComponent/PopupComponent";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import InputFieldGeneric from "@/app/ui/InputField/InputField";
 import DropDownList from "@/app/ui/DropDown/DropDown";
 import TextAreaFieldGeneric from "@/app/ui/TextArea/TextArea";
@@ -12,12 +12,19 @@ import ExpenseModifyApi from "@/app/api/Controller/Codes/Expense/ModifyExpense";
 
 import BankModifyApi from "@/app/api/Controller/Codes/Bank/ModifyBank";
 import BankAddApi from "@/app/api/Controller/Codes/Bank/AddBank";
-import { OwnerList } from "@/app/api/Types/Codes/Owner/Owner";
+import {
+  OwnerList,
+  responseOwnerListGet,
+} from "@/app/api/Types/Codes/Owner/Owner";
 import OwnerAddApi from "@/app/api/Controller/Codes/Owner/AddOwner";
 import OwnerModifyApi from "@/app/api/Controller/Codes/Owner/ModifyOwner";
 import OwnerGetList from "./OwnerListData";
+import { RefreshCcwDotIcon } from "lucide-react";
+import OwnerGetApi from "@/app/api/Controller/Codes/Owner/GetOwner";
 
 export default function BankManagement() {
+  const hasFetchedEmployees = useRef(false);
+  const [refresh, setRefresh] = useState(0);
   const [ShowForm, setShowForm] = useState(false);
   const [Name, setName] = useState("");
   const [PhoneNo, setPhoneNo] = useState("");
@@ -27,10 +34,15 @@ export default function BankManagement() {
   const [update, setUpdate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ID, setID] = useState("");
+  const [getOwnerData, setgetOwnerData] = useState<OwnerList>();
   const [getEmplyeeData, setgetEmplyeeData] = useState<OwnerList>();
   const [messageType, setMessageType] = useState<"success" | "error">(
     "success",
   );
+  const [GetOwnerDateForList, setGetOwnerDateForList] = useState<OwnerList[]>(
+    [],
+  );
+  const [isloading, setisLoading] = useState(false);
   const [moduleID, setModuleID] = useState("");
   const [Module, setModule] = useState("");
   const [showMessage, setShowMessage] = useState<string | null>(null);
@@ -55,9 +67,33 @@ export default function BankManagement() {
     setNotes("");
     setUpdate(false);
   };
+  const EmployeeGet = async () => {
+    try {
+      setisLoading(true);
+      const token = localStorage.getItem("adminToken");
+      const response = await OwnerGetApi(String(token));
+      if (response.status == 200) {
+        const data = response.data as responseOwnerListGet;
+        setGetOwnerDateForList(data.dataList);
+      } else {
+        setGetOwnerDateForList([]);
+      }
+    } finally {
+      setisLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (hasFetchedEmployees.current) return;
+
+    hasFetchedEmployees.current = true;
+    EmployeeGet();
+  }, []);
   const OwnerAdd = async () => {
     try {
       setLoading(true);
+      if (Module !== "Owner" && Module !== "Investor") {
+        return alert("Please Select From OwnerShip Type");
+      }
       if (!Name || !Address || !PhoneNo)
         return alert("Please Fill in Filed with *");
       else {
@@ -75,8 +111,9 @@ export default function BankManagement() {
           setMessageType("success");
           setShowMessage(response.data.message);
           resetFunction();
+          EmployeeGet();
           setShowForm(false);
-          click();
+          setRefresh((prev) => prev + 1);
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -89,6 +126,9 @@ export default function BankManagement() {
   const OwnerModify = async () => {
     try {
       setLoading(true);
+      if (Module !== "Owner" && Module !== "Investor") {
+        return alert("Please Select From OwnerShip Type");
+      }
       if (!Name || !Address || !PhoneNo || !ID)
         return alert("Please Fill in Filed with *");
       else {
@@ -107,8 +147,9 @@ export default function BankManagement() {
           setMessageType("success");
           setShowMessage(response.data.message);
           resetFunction();
+          EmployeeGet();
           setShowForm(false);
-          click();
+          setRefresh((prev) => prev + 1);
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -133,7 +174,6 @@ export default function BankManagement() {
       resetFunction();
     }
   }, [getEmplyeeData]);
-  const click = () => {};
   return (
     <>
       {showMessage && (
@@ -195,7 +235,7 @@ export default function BankManagement() {
                   label=" Address (پتہ)"
                   type="text"
                   required={true}
-                  placeholder="Enter  Address"
+                  placeholder="Enter Address"
                   SateChange={Address}
                   setSateChange={setAddress}
                   disabled={false}
@@ -204,9 +244,9 @@ export default function BankManagement() {
               <div>
                 <InputFieldGeneric
                   label=" Opening Balance "
-                  type="text"
+                  type="number"
                   required={true}
-                  placeholder="Enter  Opening Balance"
+                  placeholder="Enter Opening Balance"
                   SateChange={OpeningBalance}
                   setSateChange={setOpeningBalance}
                   disabled={false}
@@ -250,7 +290,8 @@ export default function BankManagement() {
         <div className="mt-8">
           <OwnerGetList
             initalData={setgetEmplyeeData}
-            callbackFunction={() => click()}
+            setGetOwnerDateForList={GetOwnerDateForList}
+            setIsLoading={isloading}
           />
         </div>
       </div>

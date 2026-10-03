@@ -1,15 +1,8 @@
-import GetEmployeeApi from "@/app/api/Controller/Codes/Employee/GetEmployeeApi";
 import GetEmployeeLedgerApi from "@/app/api/Controller/Ledger/Employee/GetEmployeeLedger";
-import {
-  employeeList,
-  responseEmployeeListGet,
-} from "@/app/api/Types/Codes/Employee/Employee";
+import GetOwnerLedgerApi from "@/app/api/Controller/Ledger/Owner/GetOwnerLedger";
+
 import { OwnerList } from "@/app/api/Types/Codes/Owner/Owner";
-import {
-  employeeLedegrList,
-  EmployeeLedgerAddRequest,
-  responseEmployeeLedgerListGet,
-} from "@/app/api/Types/Ledger/EmoployeeLedger";
+
 import {
   OwnerLedegrList,
   responseOwnerLedgerListGet,
@@ -26,6 +19,11 @@ interface EmployeeModifyProps {
   deleteID: (data: string) => void;
   deleteNow: (data: boolean) => void;
 }
+interface listData {
+  cashIn: number;
+  cashOut: number;
+  balance: number;
+}
 export default function OwnerLedgerGetList({
   initalData,
   moduleList,
@@ -39,6 +37,7 @@ export default function OwnerLedgerGetList({
   const [GenderID, setGenderID] = useState("");
   const [getEmplyeeData, setgetEmplyeeData] = useState<OwnerLedegrList[]>([]);
   const [isloading, setisLoading] = useState(false);
+  const [value, setValues] = useState<listData>();
 
   const header = [
     "#",
@@ -57,12 +56,17 @@ export default function OwnerLedgerGetList({
       const formData = {
         dateFrom: DateFrom,
         dateTo: DateTo,
-        empID: GenderID,
+        ownerID: GenderID,
       };
-      const response = await GetEmployeeLedgerApi(formData, String(token));
+      const response = await GetOwnerLedgerApi(formData, String(token));
       if (response.status == 200) {
         const data = response.data as responseOwnerLedgerListGet;
         setgetEmplyeeData(data.dataList);
+        setValues({
+          cashIn: data.cashIn,
+          cashOut: data.cashOut,
+          balance: data.balance,
+        });
       } else {
         setgetEmplyeeData([]);
       }
@@ -83,7 +87,9 @@ export default function OwnerLedgerGetList({
   };
 
   useEffect(() => {
-    EmployeeGet();
+    if (DateFrom && DateTo && GenderID) {
+      EmployeeGet();
+    }
   }, [DateFrom, DateTo, GenderID]);
   useEffect(() => {
     const date = new Date();
@@ -100,8 +106,8 @@ export default function OwnerLedgerGetList({
           {/* Employee Dropdown - Takes full width on mobile */}
           <div className="w-full mt-2 md:w-1/3">
             <DropDownList
-              label="Employee (ملازمین)"
-              placeholder="Select Employee"
+              label="Owner (مالکان)"
+              placeholder="Select Owner"
               required={true}
               filedID={setGenderID}
               value={GenderName}
@@ -143,21 +149,21 @@ export default function OwnerLedgerGetList({
         {getEmplyeeData.length > 0 && (
           <div className="flex gap-2 mt-4 mb-4">
             <StatsCard
-              title="Total Earned"
-              value="0.00"
-              urduTitle=" کل کمائیں "
+              title="Cash In"
+              value={String(value?.cashIn) || "0"}
+              urduTitle="کیش اِن"
               icon=""
             />
             <StatsCard
-              title="Total Paid"
-              value="0.00"
-              urduTitle="کل ادا شدہ"
+              title="Arrear/Balance"
+              value={String(value?.balance) || "0"}
+              urduTitle="بقایا جات / بیلنس"
               icon=""
             />
             <StatsCard
-              title="OutStanding"
-              value="0.00"
-              urduTitle="بقیہ"
+              title="Cash Out"
+              value={String(value?.cashOut) || "0"}
+              urduTitle="کیش آؤٹ"
               icon=""
             />
           </div>
@@ -198,9 +204,15 @@ export default function OwnerLedgerGetList({
                   getEmplyeeData.map((employee, index) => (
                     <tr key={employee.ownerID} className="hover:bg-gray-50">
                       <td className="px-4 py-3">{index + 1}</td>
-                      <td className="px-4 py-3">{employee.postingDate}</td>
-                      <td className="px-4 py-3">{employee.creditAmount}</td>
-                      <td className="px-4 py-3">{employee.debitAmount}</td>
+                      <td className="px-4 py-3">
+                        {new Date(employee.postingDate).toDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-green-600 font-bold">
+                        {employee.creditAmount}
+                      </td>
+                      <td className="px-4 py-3 text-red-600 font-bold">
+                        {employee.debitAmount}
+                      </td>
                       <td className="px-4 py-3">{employee.status}</td>
                       <td className="px-4 py-3">{employee.remarks}</td>
                       <td className="px-4 py-3 flex gap-2">

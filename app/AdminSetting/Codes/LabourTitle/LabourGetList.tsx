@@ -15,11 +15,13 @@ import Spinner from "@/app/ui/UseFulLComponent/Spinner/Spinner";
 import { useEffect, useState } from "react";
 interface EmployeeModifyProps {
   initalData: (data: labourList) => void;
-  callbackFunction: () => void;
+  setgetLabourData: labourList[];
+  setIsLoading: boolean;
 }
 export default function LabourGetList({
   initalData,
-  callbackFunction,
+  setgetLabourData,
+  setIsLoading,
 }: EmployeeModifyProps) {
   const [SearchEmployee, setSearchEmployee] = useState("");
   const [GenderName, setGenderName] = useState("");
@@ -27,6 +29,12 @@ export default function LabourGetList({
   const [getEmplyeeData, setgetEmplyeeData] = useState<labourList[]>([]);
   const [isloading, setisLoading] = useState(false);
 
+  useEffect(() => {
+    if (setgetLabourData || setIsLoading) {
+      setisLoading(setIsLoading);
+      setgetEmplyeeData(setgetLabourData);
+    }
+  }, [setgetLabourData, setIsLoading]);
   const GenderList = [
     { ID: "1", label: "M1 - Recycling" },
     { ID: "2", label: "M2 - Preform" },
@@ -34,25 +42,6 @@ export default function LabourGetList({
   ];
   const header = ["#", "LABOUR TYPE", "RATE/KG", "ACTIONS"];
 
-  const EmployeeGet = async () => {
-    try {
-      setisLoading(true);
-      const token = localStorage.getItem("adminToken");
-      const response = await LabourGetApi(String(token));
-      if (response.status == 200) {
-        const data = response.data as responseLabourListGet;
-        setgetEmplyeeData(data.dataList);
-      } else {
-        setgetEmplyeeData([]);
-      }
-    } finally {
-      setisLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    EmployeeGet();
-  }, [callbackFunction]);
   const assignData = (ID: string) => {
     const data = getEmplyeeData.find((item) => item.labourID === ID);
     if (data) {
@@ -63,9 +52,7 @@ export default function LabourGetList({
   const filterData = getEmplyeeData.filter((emp) => {
     return emp?.labourType.toLowerCase().includes(SearchEmployee.toLowerCase());
   });
-  useEffect(() => {
-    EmployeeGet();
-  }, []);
+
   return (
     <>
       <div>
@@ -75,7 +62,7 @@ export default function LabourGetList({
               label=""
               type="text"
               required={false}
-              placeholder="Search by Expense Name..."
+              placeholder="Search by Labour Name..."
               SateChange={SearchEmployee}
               setSateChange={setSearchEmployee}
               disabled={false}
@@ -119,7 +106,7 @@ export default function LabourGetList({
                     <tr key={employee.labourID} className="hover:bg-gray-50">
                       <td className="px-4 py-3">{index + 1}</td>
                       <td className="px-4 py-3">{employee.labourType}</td>
-                      <td className="px-4 py-3">{employee.labourType}</td>
+                      <td className="px-4 py-3">{employee.rateKG}</td>
                       <td className="px-4 py-3">
                         <button
                           onClick={() => assignData(employee.labourID)}

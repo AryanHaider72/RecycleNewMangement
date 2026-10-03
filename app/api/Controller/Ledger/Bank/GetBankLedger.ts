@@ -5,7 +5,7 @@ interface datainterfacea {
   dateTo: string;
   bankID: string;
 }
-import { postRequest } from "@/app/api/Main/main";
+import { getRequest } from "@/app/api/Main/main";
 
 export default async function GetBankLedgerApi(
   data: datainterfacea,
@@ -17,8 +17,8 @@ export default async function GetBankLedgerApi(
     customHeader.Authorization = `Bearer ${token}`;
   }
 
-  const response = await postRequest(
-    `/api/Bank/Ledger/GetBankLedger`,
+  const response = await getRequest(
+    `/api/Bank/Ledger/GetBankLedger?bankID=${data.bankID}&dateFrom=${data.dateFrom}&dateTo=${data.dateTo}&`,
     data,
     customHeader,
   );

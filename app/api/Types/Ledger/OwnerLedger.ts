@@ -1,6 +1,9 @@
 export interface responseOwnerLedgerListGet {
   message: string;
   error: string;
+  cashIn: number;
+  cashOut: number;
+  balance: number;
   dataList: OwnerLedegrList[];
 }
 
@@ -13,7 +16,10 @@ export interface OwnerLedgerAddRequest {
 export interface OwnerLedgerModifyRequest {
   ownerID: string;
   ledgerID: string;
+  paymentMode: string;
   amount: number;
+  paymentType: string;
+  bankID: string;
   postingDate: string;
   remarks: string;
 }

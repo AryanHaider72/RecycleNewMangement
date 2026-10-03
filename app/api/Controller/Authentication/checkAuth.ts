@@ -2,7 +2,7 @@
 
 import { getRequest } from "../../Main/main";
 
-export default async function CheckAuth(token?: string) {
+export default async function CheckAuth(token: string) {
   const customHeader: Record<string, string> = {};
 
   if (token) {

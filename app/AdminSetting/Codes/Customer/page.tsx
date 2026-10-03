@@ -1,7 +1,7 @@
 "use client";
 import Heading from "@/app/ui/Heading/Heading";
 import PopupComponent from "@/app/ui/PopupComponent/PopupComponent";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import InputFieldGeneric from "@/app/ui/InputField/InputField";
 import DropDownList from "@/app/ui/DropDown/DropDown";
 import TextAreaFieldGeneric from "@/app/ui/TextArea/TextArea";
@@ -16,19 +16,27 @@ import { OwnerList } from "@/app/api/Types/Codes/Owner/Owner";
 import OwnerAddApi from "@/app/api/Controller/Codes/Owner/AddOwner";
 import OwnerModifyApi from "@/app/api/Controller/Codes/Owner/ModifyOwner";
 import CustomerGetList from "./CustomerGetList";
-import { CustomerList } from "@/app/api/Types/Codes/Customer/Customer";
+import {
+  CustomerList,
+  responseCustomerListGet,
+} from "@/app/api/Types/Codes/Customer/Customer";
 import CustomerModifyApi from "@/app/api/Controller/Codes/Customer/CustomerModify";
 import CustomerAddApi from "@/app/api/Controller/Codes/Customer/CustomerAdd";
+import CustomerGetApi from "@/app/api/Controller/Codes/Customer/CustomerGet";
 
 export default function CustomerManagement() {
+  const hasFetchedEmployees = useRef(false);
   const [ShowForm, setShowForm] = useState(false);
   const [Name, setName] = useState("");
   const [PhoneNo, setPhoneNo] = useState("");
   const [Address, setAddress] = useState("");
+  const [refresh, setRefresh] = useState(0);
   const [OpeningBalance, setOpeningBalance] = useState("");
   const [Notes, setNotes] = useState("");
   const [update, setUpdate] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [getCustomerData, setgetCustomerData] = useState<CustomerList[]>([]);
+  const [isloading, setisLoading] = useState(false);
   const [ID, setID] = useState("");
   const [getEmplyeeData, setgetEmplyeeData] = useState<CustomerList>();
   const [messageType, setMessageType] = useState<"success" | "error">(
@@ -62,9 +70,38 @@ export default function CustomerManagement() {
     },
     { ID: "3", label: "Bottle Customer (پری فارم)", value: "Bottle Customer" },
   ];
+
+  const EmployeeGet = async () => {
+    try {
+      setisLoading(true);
+      const token = localStorage.getItem("adminToken");
+      const response = await CustomerGetApi(String(token));
+      if (response.status == 200) {
+        const data = response.data as responseCustomerListGet;
+        setgetCustomerData(data.dataList);
+      } else {
+        setgetCustomerData([]);
+      }
+    } finally {
+      setisLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (hasFetchedEmployees.current) return;
+
+    hasFetchedEmployees.current = true;
+    EmployeeGet();
+  }, []);
   const CustomerAdd = async () => {
     try {
       setLoading(true);
+      if (
+        Module !== "Crush Customer" &&
+        Module !== "Preform Customer" &&
+        Module !== "Bottle Customer"
+      ) {
+        return alert("Please Select From Customer Type");
+      }
       if (!Name || !Address || !PhoneNo)
         return alert("Please Fill in Filed with *");
       else {
@@ -80,10 +117,11 @@ export default function CustomerManagement() {
         const response = await CustomerAddApi(formData, String(token));
         if (response.status == 200) {
           setMessageType("success");
+          setRefresh((prev) => prev + 1);
           setShowMessage(response.data.message);
           resetFunction();
+          EmployeeGet();
           setShowForm(false);
-          click();
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -96,6 +134,13 @@ export default function CustomerManagement() {
   const CustomerModify = async () => {
     try {
       setLoading(true);
+      if (
+        Module !== "Crush Customer" &&
+        Module !== "Preform Customer" &&
+        Module !== "Bottle Customer"
+      ) {
+        return alert("Please Select From Customer Type");
+      }
       if (!Name || !Address || !PhoneNo || !ID)
         return alert("Please Fill in Filed with *");
       else {
@@ -114,8 +159,9 @@ export default function CustomerManagement() {
           setMessageType("success");
           setShowMessage(response.data.message);
           resetFunction();
+          EmployeeGet();
+          setRefresh((prev) => prev + 1);
           setShowForm(false);
-          click();
         } else {
           setMessageType("error");
           setShowMessage(response.data.message);
@@ -140,7 +186,6 @@ export default function CustomerManagement() {
       resetFunction();
     }
   }, [getEmplyeeData]);
-  const click = () => {};
   return (
     <>
       {showMessage && (
@@ -210,10 +255,10 @@ export default function CustomerManagement() {
               </div>
               <div>
                 <InputFieldGeneric
-                  label=" Opening Balance "
+                  label=" Closing Balance "
                   type="text"
                   required={true}
-                  placeholder="Enter  Opening Balance"
+                  placeholder="Enter Closing Balance"
                   SateChange={OpeningBalance}
                   setSateChange={setOpeningBalance}
                   disabled={false}
@@ -255,7 +300,8 @@ export default function CustomerManagement() {
         <div className="mt-8">
           <CustomerGetList
             initalData={setgetEmplyeeData}
-            callbackFunction={() => click()}
+            setgetCustomerData={getCustomerData}
+            setIsLoading={isloading}
           />
         </div>
       </div>

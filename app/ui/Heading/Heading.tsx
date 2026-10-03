@@ -1,12 +1,18 @@
-import { Plus } from "lucide-react";
+import { MoreHorizontal, Plus } from "lucide-react";
 
 interface Heading {
   heading: string;
   subHeading: string;
   onClick: () => void;
+  disable?: boolean;
 }
 
-export default function Heading({ heading, subHeading, onClick }: Heading) {
+export default function Heading({
+  heading,
+  subHeading,
+  onClick,
+  disable,
+}: Heading) {
   return (
     <>
       <div className="w-full flex  justify-between">
@@ -14,10 +20,10 @@ export default function Heading({ heading, subHeading, onClick }: Heading) {
           <h1 className="font-medium">{heading}</h1>
           <p className="font-medium text-sm ">{subHeading}</p>
         </div>
-        <div>
+        <div className="flex gap-2">
           <button
             onClick={onClick}
-            className="flex gap-2  rounded-md shadow-sm px-3 py-2 border border-gray-200 hover:bg-gray-100 cursor-pointer"
+            className={`flex gap-2 ${disable ? "text-gray-500 border border-gray-200 bg-gray-100 cursor-not-allowed" : "border border-gray-200 hover:bg-gray-100 cursor-pointer"}  rounded-md shadow-sm px-3 py-2  `}
           >
             <Plus className="w-4 h-4 mt-1" /> Add (شامل کریں)
           </button>

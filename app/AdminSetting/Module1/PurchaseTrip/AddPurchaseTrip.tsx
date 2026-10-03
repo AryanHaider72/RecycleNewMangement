@@ -4,6 +4,8 @@ import SupplierGetApi from "@/app/api/Controller/Codes/Supplier/GetSupplier";
 import GetVehicleApi from "@/app/api/Controller/Codes/Vehicle/GetVehicle";
 import PurchaseTripAddApi from "@/app/api/Controller/Module1/purchaseTrip/AddPurchaseTrip";
 import PurchaseTripModifyApi from "@/app/api/Controller/Module1/purchaseTrip/ModifyPurchaseTrip";
+import { ToWords } from "to-words";
+const toWords = new ToWords();
 import {
   employeeList,
   responseEmployeeListGet,
@@ -28,7 +30,15 @@ import StatsCard from "@/app/ui/StatCard/StatCard";
 import TextAreaFieldGeneric from "@/app/ui/TextArea/TextArea";
 import { Trash } from "lucide-react";
 import { init } from "next/dist/compiled/webpack/webpack";
-import { useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
+import BankGetApi from "@/app/api/Controller/Codes/Bank/GetBank";
+import { BankList, responseBankListGet } from "@/app/api/Types/Codes/Bank/Bank";
+import GenericCheckbox from "@/app/ui/CheckBox/CheckBox";
+import {
+  CustomerList,
+  responseCustomerListGet,
+} from "@/app/api/Types/Codes/Customer/Customer";
+import CustomerGetApi from "@/app/api/Controller/Codes/Customer/CustomerGet";
 interface scraperPurchase {
   supplierID: string;
   supplierName: string;
@@ -37,6 +47,7 @@ interface scraperPurchase {
   amountPaid: string;
 }
 interface FuelExpense {
+  expenseID: string;
   fuel: string;
   rate: string;
   paymentMode: string;
@@ -46,7 +57,27 @@ interface TripExpense {
   expenseType: string;
   amount: string;
   payby: string;
+  bankID: string;
+  companyCash: boolean;
   paymentMode: string;
+}
+interface LabourList {
+  employeeID: string;
+  employeeName: string;
+  rate: number;
+}
+interface SupplierPayment {
+  supplierID: string;
+  rate: string;
+  paymentMode: string;
+  bankID: string;
+  paymentStatus: string;
+}
+interface CustomerRecovery {
+  customerID: string;
+  rate: string;
+  paymentMode: string;
+  bankID: string;
 }
 interface PropsPurchaseTrip {
   update: boolean;
@@ -60,6 +91,7 @@ export default function AddPurchaseTrip({
   onShowMessage,
   initalData,
 }: PropsPurchaseTrip) {
+  const hasFetchedEmployees = useRef(false);
   const [PostingDate, setPostingDate] = useState("");
   const [VehicleID, setVehicleID] = useState("");
   const [VehicleName, setVehicleName] = useState("");
@@ -76,6 +108,24 @@ export default function AddPurchaseTrip({
   const [SupplierID, setSupplierID] = useState("");
   const [SupplierName, setSupplierName] = useState("");
   const [OpeningBalance, setOpeningBalance] = useState("");
+
+  const [CustomerRecovery, setCustomerRecovery] = useState<CustomerRecovery[]>([
+    {
+      customerID: "",
+      rate: "",
+      paymentMode: "",
+      bankID: "",
+    },
+  ]);
+  const [SupplierPayment, setSupplierPayment] = useState<SupplierPayment[]>([
+    {
+      supplierID: "",
+      rate: "",
+      paymentMode: "",
+      bankID: "",
+      paymentStatus: "",
+    },
+  ]);
   const [scraperPurchase, setScraperPurchase] = useState<scraperPurchase[]>([
     {
       supplierID: "",
@@ -88,6 +138,7 @@ export default function AddPurchaseTrip({
 
   const [FuelExpense, setFuelExpense] = useState<FuelExpense[]>([
     {
+      expenseID: "",
       fuel: "",
       rate: "",
       paymentMode: "",
@@ -99,20 +150,37 @@ export default function AddPurchaseTrip({
       expenseType: "",
       amount: "",
       payby: "",
+      bankID: "",
+      companyCash: false,
       paymentMode: "",
+    },
+  ]);
+  const [LabourList, setLabourList] = useState<LabourList[]>([
+    {
+      employeeID: "",
+      employeeName: "",
+      rate: 0,
     },
   ]);
 
   const [Notes, setNotes] = useState("");
+  const [RatePerKg, setRatePerKg] = useState("");
+  const [TruckThreshold, setTruckThreshold] = useState("");
 
   const [getVehicleData, setgetVehicleData] = useState<VehicleList[]>([]);
   const [getEmplyeeData, setgetEmplyeeData] = useState<employeeList[]>([]);
   const [getSupplierData, setgetSupplierData] = useState<SupplierList[]>([]);
+  const [GetCustomerData, setGetCustomerData] = useState<CustomerList[]>([]);
   const [getExpenseData, setgetExpenseData] = useState<ExpenseList[]>([]);
-
+  const [getBankData, setgetBankData] = useState<BankList[]>([]);
+  const [IsActive, setIsActive] = useState(true);
+  const [BankID, setBankID] = useState("");
+  const [BankName, setBankName] = useState("");
   const [loading, setLoading] = useState(false);
   const [ID, setID] = useState("");
-
+  const [AmountReceived, setAmountReceived] = useState("");
+  const [Salary, setSalary] = useState(0);
+  const [isRemaningAmount, setisRemaningAmount] = useState(false);
   const resetFunction = () => {
     setPostingDate("");
     setVehicleID("");
@@ -124,9 +192,14 @@ export default function AddPurchaseTrip({
     setWeightLoadedKg("");
     setMeterEnd("");
     setMeterStart("");
+    setisRemaningAmount(false);
+    setAmountReceived("");
     setScraperPurchase([]);
     setFuelExpense([]);
     setTripExpense([]);
+    setLabourList([]);
+    setCustomerRecovery([]);
+    setSupplierPayment([]);
     setNotes("");
     setID("");
     setNotes("");
@@ -141,6 +214,16 @@ export default function AddPurchaseTrip({
     { ID: "1", method: "Cash" },
     { ID: "2", method: "Bank" },
   ];
+  const BankGet = async () => {
+    const token = localStorage.getItem("adminToken");
+    const response = await BankGetApi(String(token));
+    if (response.status == 200) {
+      const data = response.data as responseBankListGet;
+      setgetBankData(data.dataList);
+    } else {
+      setgetBankData([]);
+    }
+  };
 
   const VehicleGet = async () => {
     const token = localStorage.getItem("adminToken");
@@ -173,6 +256,16 @@ export default function AddPurchaseTrip({
       setgetSupplierData([]);
     }
   };
+  const CustomerGet = async () => {
+    const token = localStorage.getItem("adminToken");
+    const response = await CustomerGetApi(String(token));
+    if (response.status == 200) {
+      const data = response.data as responseCustomerListGet;
+      setGetCustomerData(data.dataList);
+    } else {
+      setGetCustomerData([]);
+    }
+  };
   const ExpenseGet = async () => {
     const token = localStorage.getItem("adminToken");
     const response = await ExpenseGetApi(String(token));
@@ -184,10 +277,14 @@ export default function AddPurchaseTrip({
     }
   };
   useEffect(() => {
+    if (hasFetchedEmployees.current) return;
+    hasFetchedEmployees.current = true;
     VehicleGet();
     EmployeeGet();
     SupplierGet();
+    CustomerGet();
     ExpenseGet();
+    BankGet();
   }, []);
 
   const addRow = () => {
@@ -206,10 +303,34 @@ export default function AddPurchaseTrip({
     setFuelExpense((prev) => [
       ...prev,
       {
+        expenseID: "",
         fuel: "",
         rate: "",
         paymentMode: "",
         pumpID: "",
+      },
+    ]);
+  };
+  const addSupplierPayment = () => {
+    setSupplierPayment((prev) => [
+      ...prev,
+      {
+        supplierID: "",
+        rate: "",
+        paymentStatus: "",
+        paymentMode: "",
+        bankID: "",
+      },
+    ]);
+  };
+  const addCustomerRecovery = () => {
+    setCustomerRecovery((prev) => [
+      ...prev,
+      {
+        customerID: "",
+        rate: "",
+        paymentMode: "",
+        bankID: "",
       },
     ]);
   };
@@ -220,17 +341,54 @@ export default function AddPurchaseTrip({
         expenseType: "",
         amount: "",
         payby: "",
+        bankID: "",
+        companyCash: false,
         paymentMode: "",
       },
     ]);
   };
+  const addLabourList = () => {
+    setLabourList((prev) => [
+      ...prev,
+      {
+        employeeID: "",
+        employeeName: "",
+        rate: 0,
+      },
+    ]);
+  };
+  // const updateData = (
+  //   index: number,
+  //   field: keyof scraperPurchase,
+  //   value: string | number,
+  // ) => {
+  //   setScraperPurchase((prev) =>
+  //     prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+  //   );
+  // };
   const updateData = (
     index: number,
     field: keyof scraperPurchase,
     value: string | number,
   ) => {
     setScraperPurchase((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+      prev.map((item, i) => {
+        if (i !== index) return item;
+
+        const updatedItem = {
+          ...item,
+          [field]: value,
+        };
+
+        if (field === "rate" || field === "purchase") {
+          updatedItem.amountPaid = String(
+            Number(field === "rate" ? value : updatedItem.rate) *
+              Number(field === "purchase" ? value : updatedItem.purchase),
+          );
+        }
+
+        return updatedItem;
+      }),
     );
   };
 
@@ -253,7 +411,7 @@ export default function AddPurchaseTrip({
   const updateDataTripExpense = (
     index: number,
     field: keyof TripExpense,
-    value: string | number,
+    value: string | number | boolean,
   ) => {
     setTripExpense((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
@@ -264,6 +422,105 @@ export default function AddPurchaseTrip({
   };
 
   const PurchaseAdd = async () => {
+    const threshold = getVehicleData.find(
+      (item) => item.vehicleID === VehicleID,
+    );
+
+    //Amunt Paid
+    const scrapCarryPurchase = scraperPurchase.reduce((acc, item) => {
+      return acc + Number(item.purchase);
+    }, 0);
+    //Weight of Truck
+    const lowestRateItem =
+      scraperPurchase.length > 0
+        ? scraperPurchase.reduce((lowest, current) =>
+            Number(current.rate) < Number(lowest.rate) ? current : lowest,
+          )
+        : null;
+    const totalScrapCarryLoaded =
+      Number(WeightLoadedKg) - Number(WeightEmptyKg);
+    var poriftLoss = 0;
+    if (totalScrapCarryLoaded < 0) {
+      poriftLoss =
+        (Number(totalScrapCarryLoaded) - Number(scrapCarryPurchase)) *
+        Number(lowestRateItem?.rate ?? 0);
+    } else if (totalScrapCarryLoaded > 0) {
+      if (
+        Number(totalScrapCarryLoaded) -
+          Number(scrapCarryPurchase) -
+          Number(threshold?.positiveThreshold) >
+        0
+      ) {
+        poriftLoss =
+          (Number(totalScrapCarryLoaded) -
+            Number(scrapCarryPurchase) -
+            (Number(totalScrapCarryLoaded) -
+              Number(scrapCarryPurchase) -
+              Number(threshold?.positiveThreshold))) *
+          Number(lowestRateItem?.rate ?? 0);
+      } else if (
+        Number(totalScrapCarryLoaded) -
+          Number(scrapCarryPurchase) -
+          Number(threshold?.positiveThreshold) <
+        0
+      ) {
+        poriftLoss =
+          (Number(totalScrapCarryLoaded) - Number(scrapCarryPurchase)) *
+          Number(lowestRateItem?.rate ?? 0);
+      }
+    }
+    const scrapCarryDifference =
+      Number(totalScrapCarryLoaded) - Number(scrapCarryPurchase);
+
+    const positiveThreshold = Number(threshold?.positiveThreshold ?? 0);
+
+    const profitedScrapKg =
+      scrapCarryDifference > positiveThreshold
+        ? scrapCarryDifference - positiveThreshold
+        : 0;
+    /////////////////////////////////////////Advance Cash Manage|||||||||||||||||||||||||||||||||||
+
+    const totalExpense2 = FuelExpense.filter(
+      (item) => item.paymentMode === "Cash",
+    ).reduce((acc, item) => {
+      return acc + Number(item.fuel) * Number(item.rate);
+    }, 0);
+    const totalTrip = TripExpense.filter(
+      (item) =>
+        (item.payby === "Company" && item.paymentMode === "Cash") ||
+        (item.payby === "Employee" &&
+          item.companyCash === true &&
+          item.paymentMode === "Cash"),
+    ).reduce((acc, item) => {
+      return acc + Number(item.amount);
+    }, 0);
+    const AmountPaid = scraperPurchase.reduce((acc, item) => {
+      return acc + Number(item.amountPaid);
+    }, 0);
+    const LabourPaid = LabourList.reduce((acc, item) => {
+      return acc + Number(item.rate);
+    }, 0);
+    const CustomerRecorveryAmount = CustomerRecovery.filter(
+      (item2) => item2.paymentMode === "Cash",
+    ).reduce((sum, item) => {
+      return sum + Number(item.rate);
+    }, 0);
+    const SupplierPaidAmount = SupplierPayment.filter(
+      (item2) => item2.paymentMode === "Cash",
+    ).reduce((sum, item) => {
+      return (
+        sum +
+        (item.paymentStatus === "Cash Paid"
+          ? -Number(item.rate)
+          : Number(item.rate))
+      );
+    }, 0);
+    const salry = getEmplyeeData.find((item) => item.empID === EmployeeID);
+    const remanignCash =
+      Number(AdvanceAmount) +
+      Number(CustomerRecorveryAmount) -
+      (totalExpense2 + totalTrip + AmountPaid + LabourPaid);
+
     try {
       setLoading(true);
       if (
@@ -282,32 +539,149 @@ export default function AddPurchaseTrip({
           postingDate: PostingDate,
           vehicleID: VehicleID,
           empID: EmployeeID,
+          salary: Number(salry?.salary),
+          profitLoss: poriftLoss,
+          remainingCash:
+            isRemaningAmount === true
+              ? remanignCash + SupplierPaidAmount - Number(AmountReceived)
+              : 0,
+          ratePerKg: Number(RatePerKg),
+
           advanceAmount: Number(AdvanceAmount),
           paymentMode: PaymentMethod,
           weightEmptyKG: Number(WeightEmptyKg),
           weightLoadedKG: Number(WeightLoadedKg),
           meterstartKG: Number(MeterStart),
           meterEndKG: Number(MeterEnd),
+          bankID:
+            PaymentMethod === "Cash"
+              ? "00000000-0000-0000-0000-000000000000"
+              : BankID,
           description: Notes,
-          scrapPurchase: scraperPurchase.map((item) => ({
-            supplierID: item.supplierID,
-            purchaseKg: Number(item.purchase),
-            purchasedRate: Number(item.rate),
-            amountPaid: Number(item.amountPaid),
-          })),
+
+          scrapPurchaseProfitLoss: {
+            supplierID: "00000000-0000-0000-0000-000000000000",
+            phoneNo: "",
+            purchaseKg:
+              Number(WeightLoadedKg) -
+                Number(WeightEmptyKg) -
+                Number(scrapCarryPurchase) -
+                Number(threshold?.positiveThreshold) <
+              0
+                ? 0
+                : Number(WeightLoadedKg) -
+                  Number(WeightEmptyKg) -
+                  Number(scrapCarryPurchase) -
+                  Number(threshold?.positiveThreshold),
+            purchasedRate: 0,
+            amountPaid: 0,
+          },
+          // scrapPurchase: scraperPurchase
+          //   .filter((item) => item.supplierID.trim())
+          //   .map((item) => ({
+          //     supplierID: item.supplierID,
+          //     phoneNo: "",
+          //     purchaseKg: Number(item.purchase),
+          //     purchasedRate: Number(item.rate),
+          //     amountPaid: Number(item.amountPaid),
+          //   })),
+          scrapPurchase: [
+            ...scraperPurchase
+              .filter((item) => item.supplierID.trim())
+              .map((item) => ({
+                supplierID: item.supplierID,
+                phoneNo: "",
+                purchaseKg: Number(item.purchase),
+                purchasedRate: Number(item.rate),
+                amountPaid: Number(item.amountPaid),
+              })),
+
+            ...(profitedScrapKg > 0
+              ? [
+                  {
+                    supplierID: "00000000-0000-0000-0000-000000000000",
+                    phoneNo: "",
+                    purchaseKg: Number(threshold?.positiveThreshold),
+                    purchasedRate: Number(lowestRateItem?.rate ?? 0),
+                    amountPaid:
+                      Number(threshold?.positiveThreshold) *
+                      Number(lowestRateItem?.rate ?? 0),
+                  },
+                ]
+              : profitedScrapKg < 0
+                ? [
+                    {
+                      supplierID: "00000000-0000-0000-0000-000000000000",
+                      phoneNo: "",
+                      purchaseKg:
+                        Number(totalScrapCarryLoaded) -
+                        Number(scrapCarryPurchase),
+                      purchasedRate: Number(lowestRateItem?.rate ?? 0),
+                      amountPaid:
+                        (Number(totalScrapCarryLoaded) -
+                          Number(scrapCarryPurchase)) *
+                        Number(lowestRateItem?.rate ?? 0),
+                    },
+                  ]
+                : []),
+          ],
+
           fuelExpense: FuelExpense.map((item) => ({
+            expenseID: "00000000-0000-0000-0000-000000000000",
             liter: Number(item.fuel),
             rate: Number(item.rate),
             paymentMode: item.paymentMode,
-            supplierID: item.paymentMode === "Cash" ? "" : item.pumpID,
+            supplierID:
+              item.paymentMode === "Cash"
+                ? "00000000-0000-0000-0000-000000000000"
+                : item.pumpID,
           })),
-          tripExpense: TripExpense.map((item) => ({
+          tripExpense: TripExpense.filter((item) =>
+            item.expenseType.trim(),
+          ).map((item) => ({
             expenseID: item.expenseType,
             amount: Number(item.amount),
             paidBy: item.payby,
+            bankID:
+              item.paymentMode === "Cash"
+                ? "00000000-0000-0000-0000-000000000000"
+                : item.bankID,
+            companyCash: item.companyCash,
             paymentMode: item.paymentMode,
           })),
+          labourList: LabourList.filter((item) => item.employeeID.trim()).map(
+            (item) => ({
+              isPaid: IsActive,
+              employeeID: item.employeeID,
+              employeeName: item.employeeName,
+              rate: item.rate,
+            }),
+          ),
+          supplierPayment: SupplierPayment.filter((item) =>
+            item.supplierID.trim(),
+          ).map((item) => ({
+            supplierID: item.supplierID,
+            paymentStatus: item.paymentStatus,
+            rate: Number(item.rate),
+            paymentMode: item.paymentMode,
+            bankID:
+              item.paymentMode === "Cash"
+                ? "00000000-0000-0000-0000-000000000000"
+                : item.bankID,
+          })),
+          customerRecovery: CustomerRecovery.filter((item) =>
+            item.customerID.trim(),
+          ).map((item) => ({
+            customerID: item.customerID,
+            rate: Number(item.rate),
+            paymentMode: item.paymentMode,
+            bankID:
+              item.paymentMode === "Cash"
+                ? "00000000-0000-0000-0000-000000000000"
+                : item.bankID,
+          })),
         };
+        //console.log(formData);
         const token = localStorage.getItem("adminToken");
         const response = await PurchaseTripAddApi(formData, String(token));
         if (response.status == 200) {
@@ -315,7 +689,7 @@ export default function AddPurchaseTrip({
 
           resetFunction();
         } else {
-          onShowMessage(response.data.message, "success");
+          onShowMessage(response.data.message, "error");
           // setMessageType("error");
           // setShowMessage(response.data.message);
         }
@@ -344,7 +718,12 @@ export default function AddPurchaseTrip({
           postingDate: PostingDate,
           vehicleID: VehicleID,
           empID: EmployeeID,
+          ratePerKg: Number(RatePerKg),
           advanceAmount: Number(AdvanceAmount),
+          bankID:
+            PaymentMethod === "Cash"
+              ? "00000000-0000-0000-0000-000000000000"
+              : BankID,
           paymentMode: PaymentMethod,
           weightEmptyKG: Number(WeightEmptyKg),
           weightLoadedKG: Number(WeightLoadedKg),
@@ -353,11 +732,13 @@ export default function AddPurchaseTrip({
           description: Notes,
           scrapPurchase: scraperPurchase.map((item) => ({
             supplierID: item.supplierID,
+            phoneNo: "",
             purchaseKg: Number(item.purchase),
             purchasedRate: Number(item.rate),
             amountPaid: Number(item.amountPaid),
           })),
           fuelExpense: FuelExpense.map((item) => ({
+            expenseID: item.expenseID,
             liter: Number(item.fuel),
             rate: Number(item.rate),
             paymentMode: item.paymentMode,
@@ -368,6 +749,11 @@ export default function AddPurchaseTrip({
             amount: Number(item.amount),
             paidBy: item.payby,
             paymentMode: item.paymentMode,
+          })),
+          labourList: LabourList.map((item) => ({
+            isPaid: IsActive,
+            employeeID: item.employeeID,
+            rate: item.rate,
           })),
         };
         const token = localStorage.getItem("adminToken");
@@ -386,27 +772,121 @@ export default function AddPurchaseTrip({
       setLoading(false);
     }
   };
+  useEffect(() => {
+    const find = getEmplyeeData.find((item) => item.empID === EmployeeID);
+    if (find) {
+      setSalary(find?.salary);
+    }
+  }, [EmployeeID]);
+  const threshold = getVehicleData.find((item) => item.vehicleID === VehicleID);
   const data = scraperPurchase.reduce((accumulator, current) => {
     return accumulator + Number(current.amountPaid);
   }, 0);
-  const scrapCarry = scraperPurchase.reduce((acc, item) => {
-    return (
-      acc + Number(item.purchase)
-      //-(Number(form.weightLoaded) - Number(form.weightEmpty))
-    );
+
+  const scrapPurchaseKg = scraperPurchase.reduce((accumulator, current) => {
+    return accumulator + Number(current.purchase);
   }, 0);
 
+  const scrapCarry = scraperPurchase.reduce((acc, item) => {
+    return acc + Number(item.purchase);
+  }, 0);
+  const totalScrapCarry = Number(WeightLoadedKg) - Number(WeightEmptyKg);
+  const lowestRateItem =
+    scraperPurchase.length > 0
+      ? scraperPurchase.reduce((lowest, current) =>
+          Number(current.rate) < Number(lowest.rate) ? current : lowest,
+        )
+      : null;
+  // Calculate Profit/Loss
+  var poriftLoss = 0;
+  if (totalScrapCarry < 0) {
+    poriftLoss =
+      (Number(totalScrapCarry) - Number(scrapCarry)) *
+      Number(lowestRateItem?.rate ?? 0);
+  } else if (totalScrapCarry > 0) {
+    if (
+      Number(totalScrapCarry) -
+        Number(scrapCarry) -
+        Number(threshold?.positiveThreshold) >
+      0
+    ) {
+      poriftLoss =
+        (Number(totalScrapCarry) -
+          Number(scrapCarry) -
+          (Number(totalScrapCarry) -
+            Number(scrapCarry) -
+            Number(threshold?.positiveThreshold))) *
+        Number(lowestRateItem?.rate ?? 0);
+    } else if (
+      Number(totalScrapCarry) -
+        Number(scrapCarry) -
+        Number(threshold?.positiveThreshold) <
+      0
+    ) {
+      poriftLoss =
+        (Number(totalScrapCarry) - Number(scrapCarry)) *
+        Number(lowestRateItem?.rate ?? 0);
+    }
+  }
+  const total = Number(totalScrapCarry) - Number(scrapCarry);
   const totalExpense2 = FuelExpense.filter(
     (item) => item.paymentMode === "Cash",
   ).reduce((acc, item) => {
     return acc + Number(item.fuel) * Number(item.rate);
   }, 0);
   const totalTrip = TripExpense.filter(
-    (item) => item.paymentMode === "Cash",
+    (item) =>
+      (item.payby === "Company" && item.paymentMode === "Cash") ||
+      (item.payby === "Employee" &&
+        item.companyCash === true &&
+        item.paymentMode === "Cash"),
   ).reduce((acc, item) => {
     return acc + Number(item.amount);
   }, 0);
+
+  const fuelExpense = FuelExpense.filter(
+    (item) => item.paymentMode === "Cash",
+  ).reduce((sum, item) => {
+    return sum + Number(item.rate) * Number(item.fuel);
+  }, 0);
+  const tripExpense = TripExpense.filter(
+    (item) =>
+      (item.payby === "Company" && item.paymentMode === "Cash") ||
+      (item.payby == "Employee" &&
+        item.paymentMode === "Cash" &&
+        item.companyCash == true),
+  ).reduce((sum, item) => {
+    return sum + Number(item.amount);
+  }, 0);
+  var labourList = 0;
+  if (IsActive) {
+    labourList = LabourList.reduce((sum, item) => {
+      return sum + Number(item.rate);
+    }, 0);
+  }
+  const CustomerRecorveryAmount = CustomerRecovery.filter(
+    (item2) => item2.paymentMode === "Cash",
+  ).reduce((sum, item) => {
+    return sum + Number(item.rate);
+  }, 0);
+  const SupplierPaidAmount = SupplierPayment.filter(
+    (item2) => item2.paymentMode === "Cash",
+  ).reduce((sum, item) => {
+    return (
+      sum +
+      (item.paymentStatus === "Cash Paid"
+        ? -Number(item.rate)
+        : Number(item.rate))
+    );
+  }, 0);
   const totalExpense = totalExpense2 + totalTrip;
+
+  const remanignCash =
+    Number(AdvanceAmount) -
+    Number(data) -
+    Number(fuelExpense) -
+    Number(labourList) -
+    Number(tripExpense);
   useEffect(() => {
     if (update && initalData) {
       setPostingDate(
@@ -419,6 +899,8 @@ export default function AddPurchaseTrip({
       setAdvanceAmount(String(initalData.advanceAmount));
       setWeightEmptyKg(String(initalData.weightEmptyKG));
       setWeightLoadedKg(String(initalData.weightLoadedKG));
+      setBankID(initalData.bankID);
+      setBankName(initalData.bankName);
       setMeterEnd(String(initalData.meterEndKG));
       setMeterStart(String(initalData.meterstartKG));
       setNotes(initalData.description);
@@ -434,6 +916,7 @@ export default function AddPurchaseTrip({
       );
       setFuelExpense(
         initalData.fuelExpense.map((item) => ({
+          expenseID: item.expenseID,
           fuel: String(item.liter),
           rate: String(item.rate),
           paymentMode: item.paymentMode,
@@ -445,6 +928,8 @@ export default function AddPurchaseTrip({
           expenseType: item.expenseID,
           amount: String(item.amount),
           payby: item.paidBy,
+          companyCash: true,
+          bankID: item.bankID || "0000",
           paymentMode: item.paymentMode,
         })),
       );
@@ -456,23 +941,46 @@ export default function AddPurchaseTrip({
   return (
     <>
       <div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <StatsCard
-            title="Total Purchase "
-            value={data.toLocaleString()}
-            urduTitle="(کل خریداری)"
+            title="Total Scrap / Amount Paid "
+            value={scrapPurchaseKg + " kg / " + data.toLocaleString() + " PKR"}
+            urduTitle="(کل سکریپ / ادا کردہ رقم)"
             icon=""
           />
           <StatsCard
-            title="Weight Difference"
-            value={scrapCarry.toLocaleString() + " kg"}
-            urduTitle="(وزن کا فرق)"
+            title="Weight Difference / Bonus-Loss"
+            value={total.toLocaleString() + " kg" + " / " + poriftLoss + " PKR"}
+            urduTitle="(بونس-نقصان / وزن کا فرق)"
             icon=""
           />
           <StatsCard
             title="Total Expense "
             value={totalExpense.toLocaleString()}
             urduTitle="(کل اخراجات)"
+            icon=""
+          />
+          <StatsCard
+            title="Remaining Cash"
+            value={(isRemaningAmount
+              ? remanignCash - Number(AmountReceived) + CustomerRecorveryAmount
+              : remanignCash +
+                CustomerRecorveryAmount +
+                Number(SupplierPaidAmount)
+            ).toLocaleString()}
+            urduTitle="(بقیہ نقد رقم)"
+            icon=""
+          />
+          <StatsCard
+            title="Customer / Supplier Payments"
+            value={
+              CustomerRecorveryAmount.toLocaleString() +
+              " PKR" +
+              " / " +
+              SupplierPaidAmount.toLocaleString() +
+              " PKR"
+            }
+            urduTitle="(سپلائر / گاہک ادائیگیاں)"
             icon=""
           />
         </div>
@@ -514,7 +1022,7 @@ export default function AddPurchaseTrip({
               </div>
               <div className="mt-2">
                 <DropDownList
-                  label="Employee (ملازم)"
+                  label={`Employee (ملازم) - ${Salary.toLocaleString()}`}
                   required={true}
                   placeholder="Enter Employee"
                   filedID={setEmployeeID}
@@ -525,6 +1033,17 @@ export default function AddPurchaseTrip({
                   }))}
                   value={EmployeeName}
                   onChange={setEmployeeName}
+                />
+              </div>
+              <div>
+                <InputFieldGeneric
+                  label="Rate / Kg ( قیمت / کلوگرام)"
+                  type="number"
+                  required={true}
+                  placeholder="Enter Rate / Kg"
+                  SateChange={RatePerKg}
+                  setSateChange={setRatePerKg}
+                  disabled={false}
                 />
               </div>
             </div>
@@ -564,6 +1083,23 @@ export default function AddPurchaseTrip({
                   onChange={setPaymentMethod}
                 />
               </div>
+              {PaymentMethod === "Bank" && (
+                <div className="mt-2">
+                  <DropDownList
+                    label="Bank (بینک)"
+                    required={true}
+                    placeholder="Enter Bank"
+                    filedID={setBankID}
+                    options={getBankData.map((item) => ({
+                      id: item.bankID,
+                      label: item.accountTitle,
+                      value: item.accountTitle,
+                    }))}
+                    value={BankName}
+                    onChange={setBankName}
+                  />
+                </div>
+              )}
               <div>
                 <InputFieldGeneric
                   label="Weight Empty (KG) (خالی وزن)"
@@ -666,46 +1202,68 @@ export default function AddPurchaseTrip({
                       }}
                     >
                       <option value="">Select Supplier</option>
-
-                      {getSupplierData.map((supplier) => (
+                      {getSupplierData
+                        .filter((item) => item.accountType === "Scrap Dealer")
+                        .map((item) => (
+                          <option key={item.supplierID} value={item.supplierID}>
+                            {item.name}
+                          </option>
+                        ))}
+                      {/* {getSupplierData.map((supplier) => (
                         <option
                           key={supplier.supplierID}
                           value={supplier.supplierID}
                         >
                           {supplier.name}
                         </option>
-                      ))}
+                      ))} */}
                     </select>
-
-                    <input
-                      type="number"
-                      value={item.purchase}
-                      placeholder="KG"
-                      className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm"
-                      onChange={(e) =>
-                        updateData(index, "purchase", Number(e.target.value))
-                      }
-                    />
-
-                    <input
-                      type="number"
-                      value={item.rate}
-                      placeholder="Rate"
-                      className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm"
-                      onChange={(e) =>
-                        updateData(index, "rate", Number(e.target.value))
-                      }
-                    />
-
-                    <input
-                      type="number"
-                      value={item.amountPaid}
-                      placeholder="Amount Paid"
-                      className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm"
-                      onChange={(e) =>
-                        updateData(index, "amountPaid", Number(e.target.value))
-                      }
-                    />
+                    <div className="w-full">
+                      <input
+                        type="number"
+                        value={item.purchase}
+                        placeholder="KG"
+                        className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm"
+                        onChange={(e) =>
+                          updateData(index, "purchase", Number(e.target.value))
+                        }
+                      />
+                      <p className="text-xs text-blue-400">
+                        {toWords.convert(Number(item.purchase))}
+                      </p>
+                    </div>
+                    <div className="w-full">
+                      <input
+                        type="number"
+                        value={item.rate}
+                        placeholder="Rate"
+                        className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm"
+                        onChange={(e) =>
+                          updateData(index, "rate", Number(e.target.value))
+                        }
+                      />
+                      <p className="text-xs text-blue-400">
+                        {toWords.convert(Number(item.rate))}
+                      </p>
+                    </div>
+                    <div className="w-full">
+                      <input
+                        type="number"
+                        value={item.amountPaid}
+                        placeholder="Amount Paid"
+                        className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm"
+                        onChange={(e) =>
+                          updateData(
+                            index,
+                            "amountPaid",
+                            Number(e.target.value),
+                          )
+                        }
+                      />
+                      <p className="text-xs text-blue-400">
+                        {toWords.convert(Number(item.amountPaid) || 0)}
+                      </p>
+                    </div>
                     <div>
                       <button
                         onClick={() => deleteRow(index)}
@@ -743,13 +1301,19 @@ export default function AddPurchaseTrip({
                       value={item.fuel}
                       placeholder="Liters (لیٹر)"
                       className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm"
-                      onChange={(e) =>
+                      onChange={(e) => {
                         updateDataFuelExpense(
                           index,
                           "fuel",
                           Number(e.target.value),
-                        )
-                      }
+                        );
+                        const data = getExpenseData.find(
+                          (item) => item.categoryName === "Fuel",
+                        );
+                        if (data) {
+                          updateDataFuelExpense(index, "expenseID", data.expID);
+                        }
+                      }}
                     />
 
                     <input
@@ -776,6 +1340,7 @@ export default function AddPurchaseTrip({
                         );
                       }}
                     >
+                      <option value="">Select Payment Mode</option>
                       <option value={"Cash"}>Cash</option>
                       <option value={"PumpAccount"}>Pump Account</option>
                     </select>
@@ -794,14 +1359,18 @@ export default function AddPurchaseTrip({
                         >
                           <option value="">Select Pump</option>
 
-                          {getSupplierData.map((supplier) => (
-                            <option
-                              key={supplier.supplierID}
-                              value={supplier.supplierID}
-                            >
-                              {supplier.name}
-                            </option>
-                          ))}
+                          {getSupplierData
+                            .filter(
+                              (item) => item.accountType !== "Scrap Dealer",
+                            )
+                            .map((supplier) => (
+                              <option
+                                key={supplier.supplierID}
+                                value={supplier.supplierID}
+                              >
+                                {supplier.name}
+                              </option>
+                            ))}
                         </select>
                       </>
                     )}
@@ -851,9 +1420,17 @@ export default function AddPurchaseTrip({
                       }}
                     >
                       <option>{"Select Expense Type"}</option>
-                      {getExpenseData.map((item) => (
-                        <option value={item.expID}>{item.categoryName}</option>
-                      ))}
+                      {getExpenseData
+                        .filter(
+                          (item) =>
+                            item.expenseType === "M1 - Recycling" &&
+                            item.categoryName !== "Fuel",
+                        )
+                        .map((item) => (
+                          <option value={item.expID}>
+                            {item.categoryName}
+                          </option>
+                        ))}
                     </select>
                     <input
                       type="number"
@@ -875,6 +1452,7 @@ export default function AddPurchaseTrip({
                         updateDataTripExpense(index, "payby", e.target.value);
                       }}
                     >
+                      <option value={""}>Select Option</option>
                       <option value={"Company"}>Company (کمپنی)</option>
                       <option value={"Employee"}>Employee (ملازم)</option>
                     </select>
@@ -889,9 +1467,52 @@ export default function AddPurchaseTrip({
                         );
                       }}
                     >
+                      <option value={""}>Select Payment</option>
                       <option value={"Cash"}>Cash</option>
                       <option value={"Bank"}>Bank</option>
                     </select>
+                    {item.paymentMode === "Bank" && (
+                      <select
+                        className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm focus:ring-2 focus:ring-neutral-900 focus:outline-none"
+                        value={item.bankID}
+                        onChange={(e) => {
+                          updateDataTripExpense(
+                            index,
+                            "bankID",
+                            e.target.value,
+                          );
+                        }}
+                      >
+                        <option value={""}>Select Bank</option>
+                        {getBankData.map((item) => (
+                          <option value={item.bankID}>
+                            {item.accountTitle}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {item.payby === "Employee" && (
+                      <div>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={item.companyCash}
+                            onChange={(e) => {
+                              updateDataTripExpense(
+                                index,
+                                "companyCash",
+                                e.target.checked,
+                              );
+                            }}
+                            className="w-4 h-4 accent-neutral-900"
+                          />
+
+                          <span className="text-xs font-medium text-neutral-700">
+                            Company Cash
+                          </span>
+                        </label>
+                      </div>
+                    )}
                     <div>
                       <button
                         onClick={() => deleteRowTripExpense(index)}
@@ -902,6 +1523,416 @@ export default function AddPurchaseTrip({
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+          {/*Labour List */}
+          <div className="mt-8">
+            <div className="mt-4 mb-2">
+              <div className="w-full flex justify-between">
+                <h1 className="text-gray-600 font-medium">Labour (مزدور)</h1>
+                <button
+                  title="Add Scraper Purchase"
+                  className="px-4 py-2 font-medium text-xs border border-gray-300 hover:border-gray-500 transition duration-200 ease-in-out rounded-md cursor-pointer"
+                  onClick={addLabourList}
+                >
+                  +Add Row (قطار شامل کریں)
+                </button>
+              </div>
+              <hr className="border-gray-300 mt-1 w-full" />
+            </div>
+            {LabourList.length > 0 && (
+              <div className="space-y-2">
+                <div className="">
+                  {" "}
+                  <GenericCheckbox
+                    label="Is Paid (نقد ادائیگی )"
+                    checked={IsActive}
+                    onChange={setIsActive}
+                  />
+                </div>
+                {LabourList.map((item, index) => (
+                  <div key={index} className="flex gap-3 items-center">
+                    <select
+                      className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm focus:ring-2 focus:ring-neutral-900 focus:outline-none"
+                      value={item.employeeID}
+                      onChange={(e) => {
+                        const selectedSupplier = getEmplyeeData.find(
+                          (s) => s.empID === e.target.value,
+                        );
+
+                        if (!selectedSupplier) return;
+
+                        setLabourList((prev) =>
+                          prev.map((row, i) =>
+                            i === index
+                              ? {
+                                  ...row,
+                                  employeeID: selectedSupplier.empID,
+                                  employeeName: selectedSupplier.name,
+                                }
+                              : row,
+                          ),
+                        );
+                      }}
+                    >
+                      <option value="">Select Employee</option>
+                      {getEmplyeeData.map((item) => (
+                        <option key={item.empID} value={item.empID}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="w-full ">
+                      <input
+                        type="number"
+                        value={item.rate}
+                        placeholder="Rate"
+                        className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm"
+                        onChange={(e) => {
+                          setLabourList((prev) =>
+                            prev.map((row, i) =>
+                              i === index
+                                ? {
+                                    ...row,
+                                    rate: Number(e.target.value),
+                                  }
+                                : row,
+                            ),
+                          );
+                        }}
+                      />
+                      <p className="text-xs text-blue-400">
+                        {toWords.convert(Number(item.rate))}
+                      </p>
+                    </div>
+                    <div>
+                      <button
+                        onClick={() => {
+                          setLabourList((prev) =>
+                            prev.filter((_, i) => i !== index),
+                          );
+                        }}
+                        className="h-10 w-10 flex items-center justify-center rounded-md border border-gray-300 text-gray-500 hover:border-red-500 hover:text-red-500"
+                      >
+                        <Trash size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {/*Supplier Payment*/}
+          <div className="mt-8">
+            <div className="mt-4 mb-2">
+              <div className="w-full flex justify-between">
+                <h1 className="text-gray-600 font-medium">
+                  Supplier Payment (سپلائر کی ادائیگی)
+                </h1>
+                <button
+                  title="Add Scraper Purchase"
+                  className="px-4 py-2 font-medium text-xs border border-gray-300 hover:border-gray-500 transition duration-200 ease-in-out rounded-md cursor-pointer"
+                  onClick={addSupplierPayment}
+                >
+                  +Add Row (قطار شامل کریں)
+                </button>
+              </div>
+              <hr className="border-gray-300 mt-1 w-full" />
+              {SupplierPayment.length > 0 && (
+                <div className="mt-2">
+                  {SupplierPayment.map((item, index) => (
+                    <div key={index} className="flex gap-3 items-center">
+                      <select
+                        className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm focus:ring-2 focus:ring-neutral-900 focus:outline-none"
+                        value={item.supplierID}
+                        onChange={(e) => {
+                          const selectedSupplier = getSupplierData.find(
+                            (s) => s.supplierID === e.target.value,
+                          );
+
+                          if (!selectedSupplier) return;
+
+                          setSupplierPayment((prev) =>
+                            prev.map((row, i) =>
+                              i === index
+                                ? {
+                                    ...row,
+                                    supplierID: selectedSupplier.supplierID,
+                                  }
+                                : row,
+                            ),
+                          );
+                        }}
+                      >
+                        <option value="">Select Supplier</option>
+                        {getSupplierData.map((item) => (
+                          <option key={item.supplierID} value={item.supplierID}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm focus:ring-2 focus:ring-neutral-900 focus:outline-none"
+                        value={item.paymentMode}
+                        onChange={(e) => {
+                          setSupplierPayment((prev) =>
+                            prev.map((row, i) =>
+                              i === index
+                                ? {
+                                    ...row,
+                                    paymentMode: e.target.value,
+                                  }
+                                : row,
+                            ),
+                          );
+                        }}
+                      >
+                        <option value={""}>Select Payment</option>
+                        <option value={"Cash"}>Cash</option>
+                        <option value={"Bank"}>Bank</option>
+                      </select>
+                      {item.paymentMode === "Bank" && (
+                        <select
+                          className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm focus:ring-2 focus:ring-neutral-900 focus:outline-none"
+                          value={item.bankID}
+                          onChange={(e) => {
+                            setSupplierPayment((prev) =>
+                              prev.map((row, i) =>
+                                i === index
+                                  ? {
+                                      ...row,
+                                      bankID: e.target.value,
+                                    }
+                                  : row,
+                              ),
+                            );
+                          }}
+                        >
+                          <option value={""}>Select Bank</option>
+                          {getBankData.map((item) => (
+                            <option value={item.bankID}>
+                              {item.accountTitle}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <select
+                        className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm focus:ring-2 focus:ring-neutral-900 focus:outline-none"
+                        value={item.paymentStatus}
+                        onChange={(e) => {
+                          setSupplierPayment((prev) =>
+                            prev.map((row, i) =>
+                              i === index
+                                ? {
+                                    ...row,
+                                    paymentStatus: e.target.value,
+                                  }
+                                : row,
+                            ),
+                          );
+                        }}
+                      >
+                        <option value="">Select Payment</option>
+                        <option value="Cash Recieved">Cash Recieved</option>
+                        <option value="Cash Paid">Cash Paid</option>
+                      </select>
+                      <div className="w-full ">
+                        <input
+                          type="number"
+                          value={item.rate}
+                          placeholder={`${item.paymentStatus === "Cash Paid" ? "Paid " : "Recieved "}Amount`}
+                          className="w-full px-4 py-2 mt-3 rounded-lg border border-neutral-200 shadow-sm"
+                          onChange={(e) => {
+                            setSupplierPayment((prev) =>
+                              prev.map((row, i) =>
+                                i === index
+                                  ? {
+                                      ...row,
+                                      rate: e.target.value,
+                                    }
+                                  : row,
+                              ),
+                            );
+                          }}
+                        />
+                        <p className="text-xs text-blue-400">
+                          {toWords.convert(Number(item.rate))}
+                        </p>
+                      </div>
+                      <div>
+                        <button
+                          onClick={() => {
+                            setSupplierPayment((prev) =>
+                              prev.filter((_, i) => i !== index),
+                            );
+                          }}
+                          className="h-10 w-10 flex items-center justify-center rounded-md border border-gray-300 text-gray-500 hover:border-red-500 hover:text-red-500"
+                        >
+                          <Trash size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          {/*Customer Recovery*/}
+          <div className="mt-8">
+            <div className="mt-4 mb-2">
+              <div className="w-full flex justify-between">
+                <h1 className="text-gray-600 font-medium">
+                  Customer Recovery (گاہک کی بحالی)
+                </h1>
+                <button
+                  title="Add Scraper Purchase"
+                  className="px-4 py-2 font-medium text-xs border border-gray-300 hover:border-gray-500 transition duration-200 ease-in-out rounded-md cursor-pointer"
+                  onClick={addCustomerRecovery}
+                >
+                  +Add Row (قطار شامل کریں)
+                </button>
+              </div>
+              <hr className="border-gray-300 mt-1 w-full" />
+            </div>
+            {CustomerRecovery.length > 0 && (
+              <div className="mt-2">
+                {CustomerRecovery.map((item, index) => (
+                  <div key={index} className="flex gap-3 items-center">
+                    <select
+                      className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm focus:ring-2 focus:ring-neutral-900 focus:outline-none"
+                      value={item.customerID}
+                      onChange={(e) => {
+                        const selectedSupplier = GetCustomerData.find(
+                          (s) => s.customerID === e.target.value,
+                        );
+
+                        if (!selectedSupplier) return;
+
+                        setCustomerRecovery((prev) =>
+                          prev.map((row, i) =>
+                            i === index
+                              ? {
+                                  ...row,
+                                  customerID: selectedSupplier.customerID,
+                                }
+                              : row,
+                          ),
+                        );
+                      }}
+                    >
+                      <option value="">Select Customer</option>
+                      {GetCustomerData.map((item) => (
+                        <option key={item.customerID} value={item.customerID}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm focus:ring-2 focus:ring-neutral-900 focus:outline-none"
+                      value={item.paymentMode}
+                      onChange={(e) => {
+                        setCustomerRecovery((prev) =>
+                          prev.map((row, i) =>
+                            i === index
+                              ? {
+                                  ...row,
+                                  paymentMode: e.target.value,
+                                }
+                              : row,
+                          ),
+                        );
+                      }}
+                    >
+                      <option value={""}>Select Payment</option>
+                      <option value={"Cash"}>Cash</option>
+                      <option value={"Bank"}>Bank</option>
+                    </select>
+                    {item.paymentMode === "Bank" && (
+                      <select
+                        className="w-full px-4 py-2 rounded-lg border border-neutral-200 shadow-sm focus:ring-2 focus:ring-neutral-900 focus:outline-none"
+                        value={item.bankID}
+                        onChange={(e) => {
+                          setCustomerRecovery((prev) =>
+                            prev.map((row, i) =>
+                              i === index
+                                ? {
+                                    ...row,
+                                    bankID: e.target.value,
+                                  }
+                                : row,
+                            ),
+                          );
+                        }}
+                      >
+                        <option value={""}>Select Bank</option>
+                        {getBankData.map((item) => (
+                          <option value={item.bankID}>
+                            {item.accountTitle}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <div className="w-full ">
+                      <input
+                        type="number"
+                        value={item.rate}
+                        placeholder="Rate"
+                        className="w-full px-4 py-2 mt-3 rounded-lg border border-neutral-200 shadow-sm"
+                        onChange={(e) => {
+                          setCustomerRecovery((prev) =>
+                            prev.map((row, i) =>
+                              i === index
+                                ? {
+                                    ...row,
+                                    rate: e.target.value,
+                                  }
+                                : row,
+                            ),
+                          );
+                        }}
+                      />
+                      <p className="text-xs text-blue-400">
+                        {toWords.convert(Number(item.rate))}
+                      </p>
+                    </div>
+                    <div>
+                      <button
+                        onClick={() => {
+                          setCustomerRecovery((prev) =>
+                            prev.filter((_, i) => i !== index),
+                          );
+                        }}
+                        className="h-10 w-10 flex items-center justify-center rounded-md border border-gray-300 text-gray-500 hover:border-red-500 hover:text-red-500"
+                      >
+                        <Trash size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <div className="">
+              {" "}
+              <GenericCheckbox
+                label="Is Remaning (بقیہ رقم)"
+                checked={isRemaningAmount}
+                onChange={setisRemaningAmount}
+              />
+            </div>
+            {isRemaningAmount && (
+              <div>
+                <InputFieldGeneric
+                  label="Amount Received (موصول شدہ رقم)"
+                  type="number"
+                  required={true}
+                  placeholder="Enter Amount Received"
+                  SateChange={AmountReceived}
+                  setSateChange={setAmountReceived}
+                  disabled={false}
+                />
               </div>
             )}
           </div>

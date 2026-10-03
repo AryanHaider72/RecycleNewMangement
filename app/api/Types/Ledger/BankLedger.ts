@@ -1,13 +1,16 @@
 export interface responseBankLedgerListGet {
   message: string;
   error: string;
+  balance: number;
   dataList: BankLedegrList[];
 }
 
 export interface BankLedgerAddRequest {
-  bankID: string;
-  amount: number;
+  bankFromID: string;
+  bankToID: string;
   postingDate: string;
+  amount: number;
+  transactionType: string;
   remarks: string;
 }
 export interface BankLedgerModifyRequest {
@@ -20,11 +23,11 @@ export interface BankLedgerModifyRequest {
 
 export interface BankLedegrList {
   ledgerID: string;
-  bankID: string;
-  accountTitle: string;
   creditAmount: number;
   debitAmount: number;
+  runningBalance: number;
   postingDate: string;
-  status: string;
+  myStatus: string;
+  systemStatus: string;
   remarks: string;
 }

@@ -12,5 +12,6 @@ export interface LabourAddRequest {
 export interface labourList {
   labourID: string;
   labourType: string;
+  qty: number;
   rateKG: number;
 }

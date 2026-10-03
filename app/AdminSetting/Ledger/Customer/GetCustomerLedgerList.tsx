@@ -12,26 +12,47 @@ import Spinner from "@/app/ui/UseFulLComponent/Spinner/Spinner";
 import { useEffect, useState } from "react";
 interface EmployeeModifyProps {
   initalData: (data: CustomerLedegrList) => void;
+  setDateFrom: (data: string) => void;
+  DateFrom: string;
+  DateTo: string;
+  isLoading: boolean;
+  setDateTo: (data: string) => void;
+  setCustomerID: (data: string) => void;
+  setCustomerName: (data: string) => void;
+  CustomerName: string;
   moduleList: CustomerList[];
-  callbackFunction: () => void;
+  balance: number;
   deleteID: (data: string) => void;
   deleteNow: (data: boolean) => void;
+  setCustomerGetData: CustomerLedegrList[];
 }
 export default function CustomerLedgerGetList({
   initalData,
   moduleList,
-  callbackFunction,
   deleteID,
   deleteNow,
+  setDateFrom,
+  setDateTo,
+  setCustomerName,
+  setCustomerID,
+  setCustomerGetData,
+  CustomerName,
+  balance,
+  isLoading,
+  DateFrom,
+  DateTo,
 }: EmployeeModifyProps) {
-  const [DateFrom, setDateFrom] = useState("");
-  const [DateTo, setDateTo] = useState("");
-  const [GenderName, setGenderName] = useState("");
-  const [GenderID, setGenderID] = useState("");
   const [getEmplyeeData, setgetEmplyeeData] = useState<CustomerLedegrList[]>(
     [],
   );
   const [isloading, setisLoading] = useState(false);
+
+  useEffect(() => {
+    if (setCustomerGetData) {
+      setisLoading(isLoading);
+      setgetEmplyeeData(setCustomerGetData);
+    }
+  }, [setCustomerGetData, isLoading, setDateFrom, setDateTo, setCustomerID]);
 
   const header = [
     "#",
@@ -39,34 +60,11 @@ export default function CustomerLedgerGetList({
     "CREDIT AMOUNT",
     "DEBIT AMOUNT",
     "STATUS",
+    "Payment Mode",
+    "Bank Name",
     "REMARKS",
     "ACTIONS",
   ];
-
-  const EmployeeGet = async () => {
-    try {
-      setisLoading(true);
-      const token = localStorage.getItem("adminToken");
-      const formData = {
-        dateFrom: DateFrom,
-        dateTo: DateTo,
-        customerID: GenderID,
-      };
-      const response = await GetCustomerLedgerApi(formData, String(token));
-      if (response.status == 200) {
-        const data = response.data as responseCustomerLedgerListGet;
-        setgetEmplyeeData(data.dataList);
-      } else {
-        setgetEmplyeeData([]);
-      }
-    } finally {
-      setisLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    EmployeeGet();
-  }, [callbackFunction, DateFrom, DateTo, GenderID]);
 
   const assignData = (ID: string) => {
     const data = getEmplyeeData.find((item) => item.ledgerID === ID);
@@ -76,9 +74,6 @@ export default function CustomerLedgerGetList({
   };
 
   useEffect(() => {
-    EmployeeGet();
-  }, [DateFrom, DateTo, GenderID]);
-  useEffect(() => {
     const date = new Date();
     const lastYear = new Date();
     lastYear.setFullYear(date.getFullYear() - 1);
@@ -86,6 +81,31 @@ export default function CustomerLedgerGetList({
     setDateFrom(lastYear.toISOString().split("T")[0]);
     setDateTo(date.toISOString().split("T")[0]);
   }, []);
+
+  // const balance = getEmplyeeData.reduce((sum, item) => {
+  //   return sum + item.debitAmount - item.creditAmount;
+  // }, 0);
+
+  const cashIN = getEmplyeeData
+    // .filter(
+    //   (item) =>
+    //     item.status?.trim().toLowerCase() !== "opening balance" &&
+    //     item.status?.trim().toLowerCase() !== "sale",
+    // )
+    .reduce((sum, item) => {
+      return sum + Number(item.debitAmount || 0);
+    }, 0);
+
+  const cashOut = getEmplyeeData
+    // .filter(
+    //   (item) =>
+    //     item.status?.trim().toLowerCase() !== "opening balance" &&
+    //     item.status?.trim().toLowerCase() !== "sale",
+    // )
+    .reduce((sum, item) => {
+      return sum + Number(item.creditAmount || 0);
+    }, 0);
+
   return (
     <>
       <div>
@@ -96,9 +116,9 @@ export default function CustomerLedgerGetList({
               label="Customer (گاہک)"
               placeholder="Select Customer"
               required={true}
-              filedID={setGenderID}
-              value={GenderName}
-              onChange={setGenderName}
+              filedID={setCustomerID}
+              value={CustomerName}
+              onChange={setCustomerName}
               options={moduleList.map((item) => ({
                 label: item.name,
                 value: item.name,
@@ -136,21 +156,21 @@ export default function CustomerLedgerGetList({
         {getEmplyeeData.length > 0 && (
           <div className="flex gap-2 mt-4 mb-4">
             <StatsCard
-              title="Total Earned"
-              value="0.00"
-              urduTitle=" کل کمائیں "
+              title="Cash In"
+              value={String(cashIN) || "0"}
+              urduTitle="کیش اِن"
               icon=""
             />
             <StatsCard
-              title="Total Paid"
-              value="0.00"
-              urduTitle="کل ادا شدہ"
+              title="Arrear/Balance"
+              value={String(balance) || "0"}
+              urduTitle="بقایا جات / بیلنس"
               icon=""
             />
             <StatsCard
-              title="OutStanding"
-              value="0.00"
-              urduTitle="بقیہ"
+              title="Cash Out"
+              value={String(cashOut) || "0"}
+              urduTitle="کیش آؤٹ"
               icon=""
             />
           </div>
@@ -191,10 +211,18 @@ export default function CustomerLedgerGetList({
                   getEmplyeeData.map((employee, index) => (
                     <tr key={employee.customerID} className="hover:bg-gray-50">
                       <td className="px-4 py-3">{index + 1}</td>
-                      <td className="px-4 py-3">{employee.postingDate}</td>
+                      <td className="px-4 py-3">
+                        {
+                          new Date(employee.postingDate)
+                            .toISOString()
+                            .split("T")[0]
+                        }
+                      </td>
                       <td className="px-4 py-3">{employee.creditAmount}</td>
                       <td className="px-4 py-3">{employee.debitAmount}</td>
                       <td className="px-4 py-3">{employee.status}</td>
+                      <td className="px-4 py-3">{employee.paymentMode}</td>
+                      <td className="px-4 py-3">{employee.bankName}</td>
                       <td className="px-4 py-3">{employee.remarks}</td>
                       <td className="px-4 py-3 flex gap-2">
                         <button

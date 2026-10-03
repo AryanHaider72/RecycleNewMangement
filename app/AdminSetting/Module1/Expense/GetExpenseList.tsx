@@ -1,24 +1,21 @@
-import ExpenseGetApi from "@/app/api/Controller/Codes/Expense/GetExpense";
-
-import {
-  ExpenseList,
-  responseExpenseListGet,
-} from "@/app/api/Types/Codes/Expense/Expense";
-import {
-  generalExpenseList,
-  GetExpenseListResposne,
-} from "@/app/api/Types/module1/GeneralExpense";
+import { ExpenseList } from "@/app/api/Types/Codes/Expense/Expense";
+import { generalExpenseList } from "@/app/api/Types/module1/GeneralExpense";
 import DropDownList from "@/app/ui/DropDown/DropDown";
-import InputFieldGeneric from "@/app/ui/InputField/InputField";
 import Spinner from "@/app/ui/UseFulLComponent/Spinner/Spinner";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 interface EmployeeModifyProps {
   initalData: (data: generalExpenseList) => void;
-  callbackFunction: () => void;
+  refresh: number;
+  setgetExpenseDataForList: generalExpenseList[];
+  setIsLoading: boolean;
+  expenseData: ExpenseList[];
 }
 export default function GeneralExpenseGetList({
   initalData,
-  callbackFunction,
+  refresh,
+  expenseData,
+  setgetExpenseDataForList,
+  setIsLoading,
 }: EmployeeModifyProps) {
   const [SearchEmployee, setSearchEmployee] = useState("");
   const [GenderName, setGenderName] = useState("");
@@ -27,7 +24,12 @@ export default function GeneralExpenseGetList({
     [],
   );
   const [isloading, setisLoading] = useState(false);
-
+  useEffect(() => {
+    if (setgetExpenseDataForList || setIsLoading) {
+      setisLoading(setIsLoading);
+      setgetEmplyeeData(setgetExpenseDataForList);
+    }
+  }, [setgetExpenseDataForList, setIsLoading]);
   const GenderList = [
     { ID: "1", label: "M1 - Recycling" },
     { ID: "2", label: "M2 - Preform" },
@@ -39,29 +41,11 @@ export default function GeneralExpenseGetList({
     "DATE",
     "AMOUNT",
     "PAYMENT METHOD",
+    "BANK NAME",
     "EXPENSE CATEGORY",
     "ACTIONS",
   ];
 
-  const EmployeeGet = async () => {
-    try {
-      setisLoading(true);
-      const token = localStorage.getItem("adminToken");
-      const response = await ExpenseGetApi(String(token));
-      if (response.status == 200) {
-        const data = response.data as GetExpenseListResposne;
-        setgetEmplyeeData(data.dataList);
-      } else {
-        setgetEmplyeeData([]);
-      }
-    } finally {
-      setisLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    EmployeeGet();
-  }, [callbackFunction]);
   const assignData = (ID: string) => {
     const data = getEmplyeeData.find((item) => item.expenseID === ID);
     if (data) {
@@ -70,27 +54,32 @@ export default function GeneralExpenseGetList({
   };
 
   const filterData = getEmplyeeData.filter((emp) => {
-    return emp?.expenseDate.includes(SearchEmployee);
+    return emp.expenseName?.toLowerCase()?.includes(GenderName.toLowerCase());
   });
-  useEffect(() => {
-    EmployeeGet();
-  }, []);
+
   return (
     <>
       <div>
         <div className="w-1/2 flex gap-2">
-          <div>
-            <InputFieldGeneric
+          <div className="">
+            <DropDownList
               label=""
-              type="date"
-              required={false}
-              placeholder="Search by Expense Name..."
-              SateChange={SearchEmployee}
-              setSateChange={setSearchEmployee}
-              disabled={false}
+              placeholder="Search by Expense Category"
+              required={true}
+              filedID={setGenderID}
+              value={GenderName}
+              onChange={setGenderName}
+              options={expenseData
+                .filter((item) => item.expenseType === "M1 - Recycling")
+                .map((item) => ({
+                  label: item.categoryName,
+                  value: item.categoryName,
+                  id: item.expID,
+                }))}
             />
           </div>
         </div>
+
         <table className="w-full  bg-white border-collapse border border-gray-300 rounded-lg  shadow-lg mt-2">
           <thead className="bg-gray-100">
             <tr className="sticky top-0 bg-white z-10">
@@ -128,9 +117,12 @@ export default function GeneralExpenseGetList({
                     <tr key={employee.expenseID} className="hover:bg-gray-50">
                       <td className="px-4 py-3">{index + 1}</td>
                       <td className="px-4 py-3">{employee.expenseName}</td>
-                      <td className="px-4 py-3">{employee.expenseDate}</td>
+                      <td className="px-4 py-3">
+                        {new Date(employee.expenseDate).toLocaleDateString()}
+                      </td>
                       <td className="px-4 py-3">{employee.expenseAmount}</td>
                       <td className="px-4 py-3">{employee.paymentMethod}</td>
+                      <td className="px-4 py-3">{employee.bankName}</td>
                       <td className="px-4 py-3">{employee.expnseType}</td>
                       <td className="px-4 py-3">
                         <button
