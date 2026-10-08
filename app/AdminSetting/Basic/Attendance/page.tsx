@@ -54,9 +54,8 @@ export default function AttendenceManagement() {
   }, []);
 
   const stats = [
-    { ID: "1", label: "Present" },
-    { ID: "2", label: "Absent" },
-    { ID: "2", label: "Leave" },
+    { ID: "1", label: "Check In" },
+    { ID: "2", label: "Check Out" }
   ];
   const resetFunction = () => {
     setPostingDate("");
@@ -79,7 +78,7 @@ export default function AttendenceManagement() {
           description: Notes,
         };
         const token = localStorage.getItem("adminToken");
-        //console.log(formData);
+        console.log(formData);
         const response = await AttendenceAddApi(formData, String(token));
         if (response.status == 200) {
           setMessageType("success");
@@ -134,7 +133,7 @@ export default function AttendenceManagement() {
               <div className="">
                 <InputFieldGeneric
                   label="Posting Date (تاریخ)"
-                  type="date"
+                  type="datetime-local"
                   required={false}
                   placeholder="Enter Address"
                   SateChange={PostingDate}

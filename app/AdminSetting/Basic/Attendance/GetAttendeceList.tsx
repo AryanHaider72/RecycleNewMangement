@@ -23,13 +23,18 @@ interface attendeceList {
   postingDate: string;
   status: string;
   description: string;
+  dateReport: string;
 }
 
+interface DailyAttendance {
+  status: string;
+  dateReport: string;
+}
 // Pivoted row (one per employee)
 interface PivotedRow {
   empID: string;
   employeeName: string;
-  dailyStatus: Record<string, string>; // key = yyyy-MM-dd
+  dailyStatus: Record<string, DailyAttendance>; // key = yyyy-MM-dd
 }
 
 export default function AttendeceGetList({
@@ -77,30 +82,65 @@ export default function AttendeceGetList({
 
   // ---------- PIVOT IN MEMORY ----------
   const { dates, rows } = useMemo(() => {
-    // 1. Build the list of date columns from the selected range
     const dateList: string[] = [];
+
+    // Create all dates between DateFrom and DateTo
     if (DateFrom && DateTo) {
-      const start = new Date(DateFrom);
-      const end = new Date(DateTo);
+      const start = new Date(`${DateFrom}T00:00:00`);
+      const end = new Date(`${DateTo}T00:00:00`);
+
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        dateList.push(d.toISOString().split("T")[0]);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+
+        dateList.push(`${year}-${month}-${day}`);
       }
     }
 
-    // 2. Group rows by employee
+    // Create rows for ALL employees
     const grouped = new Map<string, PivotedRow>();
-    for (const item of rawData) {
-      const dateKey = new Date(item.postingDate).toISOString().split("T")[0];
 
-      if (!grouped.has(item.empID)) {
-        grouped.set(item.empID, {
-          empID: item.empID,
-          employeeName: item.employeeName,
-          dailyStatus: {},
-        });
+    moduleList.forEach((employee) => {
+      const dailyStatus: Record<string, DailyAttendance> = {};
+
+      // Initially mark every date as Absent
+      dateList.forEach((date) => {
+        dailyStatus[date] = {
+          status: "Absent",
+          dateReport: "",
+        };
+      });
+
+      grouped.set(employee.empID, {
+        empID: employee.empID,
+        employeeName: employee.name,
+        dailyStatus,
+      });
+    });
+
+    // Add actual attendance
+    for (const item of rawData) {
+      if (!item.empID || !item.postingDate) {
+        continue;
       }
-      // If multiple records for same day, last one wins
-      grouped.get(item.empID)!.dailyStatus[dateKey] = item.status;
+
+      const postingDate = new Date(item.postingDate);
+
+      const year = postingDate.getFullYear();
+      const month = String(postingDate.getMonth() + 1).padStart(2, "0");
+      const day = String(postingDate.getDate()).padStart(2, "0");
+
+      const dateKey = `${year}-${month}-${day}`;
+
+      const employee = grouped.get(item.empID);
+
+      if (employee) {
+        employee.dailyStatus[dateKey] = {
+          status: item.status,
+          dateReport: item.dateReport || "",
+        };
+      }
     }
 
     return {
@@ -109,7 +149,15 @@ export default function AttendeceGetList({
         a.employeeName.localeCompare(b.employeeName),
       ),
     };
-  }, [rawData, DateFrom, DateTo]);
+  }, [rawData, DateFrom, DateTo, moduleList]);
+
+  const filteredRows = useMemo(() => {
+    if (!EmployeeName || EmployeeName === "All") {
+      return rows;
+    }
+
+    return rows.filter((row) => row.employeeName === EmployeeName);
+  }, [rows, EmployeeName]);
 
   // ---------- STATUS COLOR ----------
   const getStatusClass = (status: string) => {
@@ -133,21 +181,28 @@ export default function AttendeceGetList({
     <div>
       {/* ---------- FILTERS ---------- */}
       <div className="w-full flex flex-wrap gap-2">
-        {/* <div className="w-full md:w-1/3">
+        <div className="w-full md:w-1/3">
           <DropDownList
             label="Employee (ملازم)"
             required={true}
             placeholder="Enter Employee"
             filedID={setEmployeeID}
-            options={moduleList.map((item) => ({
-              id: item.empID,
-              label: item.name,
-              value: item.name,
-            }))}
+            options={[
+              {
+                id: "1",
+                label: "All",
+                value: "All",
+              },
+              ...moduleList.map((item) => ({
+                id: item.empID,
+                label: item.name,
+                value: item.name,
+              })),
+            ]}
             value={EmployeeName}
             onChange={setEmployeeName}
           />
-        </div> */}
+        </div>
 
         <div className="w-full md:w-1/4">
           <InputFieldGeneric
@@ -200,7 +255,7 @@ export default function AttendeceGetList({
                   <Spinner />
                 </td>
               </tr>
-            ) : rows.length === 0 ? (
+            ) : filteredRows.length === 0 ? (
               <tr>
                 <td colSpan={dates.length + 1} className="py-10 text-center">
                   <span className="text-lg font-semibold text-gray-500">
@@ -209,21 +264,48 @@ export default function AttendeceGetList({
                 </td>
               </tr>
             ) : (
-              rows.map((row) => (
+              filteredRows.map((row) => (
                 <tr key={row.empID} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium whitespace-nowrap sticky left-0 bg-white">
                     {row.employeeName}
                   </td>
                   {dates.map((date) => {
-                    const status = row.dailyStatus[date] || "-";
+                    const attendance = row.dailyStatus[date];
+
                     return (
                       <td
                         key={date}
-                        className={`px-4 py-3 text-center whitespace-nowrap ${getStatusClass(
-                          status,
-                        )}`}
+                        className="px-4 py-3 text-center whitespace-nowrap"
                       >
-                        {status}
+                        {attendance?.status === "Present" ? (
+                          <div className="flex flex-col items-center">
+                            <span className="text-green-600 font-semibold">
+                              Present
+                            </span>
+
+                            {attendance.dateReport && (
+                              <span className="text-xs text-gray-500 mt-1">
+                                Check In:{" "}
+                                {new Date(
+                                  attendance.dateReport.split("~")[0],
+                                ).toLocaleTimeString()}{" "}
+                                <br />
+                                Check Out:{" "}
+                                {new Date(
+                                  attendance.dateReport.split("~")[1],
+                                ).toLocaleTimeString()}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span
+                            className={getStatusClass(
+                              attendance?.status || "Absent",
+                            )}
+                          >
+                            {attendance?.status || "Absent"}
+                          </span>
+                        )}
                       </td>
                     );
                   })}
